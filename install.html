@@ -2,132 +2,207 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<meta name="theme-color" content="#0d1b6b">
 <title>TeamFlex 앱 설치</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:linear-gradient(160deg,#0d1b6b,#1565c0);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.card{background:#fff;border-radius:24px;padding:32px 24px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.logo{width:90px;height:90px;border-radius:20px;margin:0 auto 20px}
-h1{font-size:22px;font-weight:900;color:#1a1a1a;margin-bottom:6px}
-.sub{font-size:14px;color:#666;margin-bottom:28px}
-.step{background:#f8f9fa;border-radius:14px;padding:16px;margin-bottom:12px;text-align:left;font-size:14px;line-height:1.8;color:#333}
-.step b{color:#1565c0}
-.btn{display:block;width:100%;padding:16px;background:#F0A500;color:#1a1a1a;border:none;border-radius:14px;font-size:17px;font-weight:900;cursor:pointer;text-decoration:none;margin-top:20px;box-shadow:0 4px 16px rgba(240,165,0,.4)}
-.btn-outline{display:block;width:100%;padding:14px;background:transparent;color:#1565c0;border:2px solid #1565c0;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;margin-top:10px}
-.warn{background:#fff3cd;border-radius:10px;padding:12px;font-size:13px;color:#856404;margin-bottom:16px}
+body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:linear-gradient(160deg,#0d1b6b 0%,#1565c0 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:24px;padding:28px 20px 24px;width:100%;max-width:380px;box-shadow:0 24px 60px rgba(0,0,0,.4);text-align:center}
+.logo{width:80px;height:80px;background:linear-gradient(135deg,#0d1b6b,#1565c0);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;font-weight:900;color:#F0A500}
+h1{font-size:22px;font-weight:900;color:#1a1a1a;margin-bottom:4px}
+.sub{font-size:13px;color:#888;margin-bottom:20px}
+.status-box{border-radius:14px;padding:14px 16px;margin-bottom:16px;text-align:left;font-size:14px;line-height:1.7}
+.status-box.info{background:#e3f2fd;color:#0d47a1}
+.status-box.warn{background:#fff8e1;color:#e65100}
+.status-box.ok{background:#e8f5e9;color:#2e7d32}
+.btn{display:block;width:100%;padding:16px;border:none;border-radius:14px;font-size:17px;font-weight:900;cursor:pointer;margin-bottom:10px;transition:opacity .15s}
+.btn:active{opacity:.8}
+.btn-main{background:linear-gradient(135deg,#F0A500,#e65100);color:#fff;box-shadow:0 4px 16px rgba(240,165,0,.4)}
+.btn-fix{background:linear-gradient(135deg,#c62828,#b71c1c);color:#fff;box-shadow:0 4px 16px rgba(198,40,40,.3)}
+.btn-open{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;box-shadow:0 4px 16px rgba(21,101,192,.4)}
+.btn-gray{background:#f0f0f0;color:#555;font-size:14px}
+.steps{text-align:left;margin-bottom:16px}
+.step{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.step:last-child{border-bottom:none}
+.step-num{background:#1565c0;color:#fff;border-radius:50%;width:24px;height:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:1px}
+.step-txt{font-size:14px;color:#333;line-height:1.6}
+.step-txt b{color:#1565c0}
+.qr-section{background:#f5f5f5;border-radius:14px;padding:16px;margin-bottom:16px}
+.qr-section img{width:140px;height:140px;border-radius:8px}
+.qr-section p{font-size:12px;color:#888;margin-top:8px}
+.divider{height:1px;background:#f0f0f0;margin:16px 0}
+.small{font-size:12px;color:#aaa;margin-top:12py}
+#loading{text-align:center;padding:20px;color:#666;font-size:14px}
 </style>
 </head>
 <body>
 <div class="card">
-  <img src="/icons/icon-192.png" class="logo">
+  <div class="logo">TF</div>
   <h1>TeamFlex 앱 설치</h1>
-  <p class="sub">Logistics 기사 포털</p>
+  <p class="sub">Logistics 기사 전용 포털</p>
 
-  <!-- 카톡/내장브라우저 감지 → 크롬 안내 -->
-  <div id="kakao-guide" style="display:none">
-    <div class="warn">⚠️ 지금 카카오톡 브라우저입니다.<br>앱 설치를 위해 <b>크롬으로 열어야</b> 합니다.</div>
-    <div class="step">
-      <b>안드로이드</b><br>
-      ① 화면 아래 또는 오른쪽 상단 <b>⋯ 버튼</b> 탭<br>
-      ② <b>"다른 브라우저로 열기"</b> 또는<br>
-      &nbsp;&nbsp;&nbsp;<b>"크롬으로 열기"</b> 선택
+  <div id="loading">⏳ 환경 확인 중...</div>
+
+  <!-- 안드로이드 설치 -->
+  <div id="android-section" style="display:none">
+    <div id="android-ready" style="display:none">
+      <div class="status-box ok">✅ 설치 준비 완료! 아래 버튼을 눌러주세요.</div>
+      <button class="btn btn-main" onclick="doInstall()">📲 TeamFlex 앱 설치하기</button>
     </div>
-    <a id="chrome-intent-btn" class="btn" style="display:none">📲 크롬으로 바로 열기</a>
-    <div class="step" id="ios-kakao-step" style="display:none">
-      <b>아이폰</b><br>
-      ① 오른쪽 하단 <b>⋯ 버튼</b> 탭<br>
-      ② <b>"Safari로 열기"</b> 선택
+    <div id="android-manual" style="display:none">
+      <div class="status-box info">📌 크롬 메뉴에서 설치해주세요</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-txt">화면 오른쪽 상단 <b>⋮ 버튼</b> 탭</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-txt"><b>"앱 설치"</b> 또는 <b>"홈 화면에 추가"</b> 선택</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-txt"><b>"설치"</b> 탭 → 완료!</div></div>
+      </div>
+    </div>
+    <div id="android-wait" style="display:none">
+      <div class="status-box warn">⏳ 잠시만 기다려주세요...</div>
+    </div>
+    <button class="btn btn-fix" onclick="doRepair()" style="margin-top:8px">🔧 앱이 안 열리면? 여기 눌러 수리</button>
+    <button class="btn btn-gray" onclick="goApp()">앱 바로 열기 (설치 후)</button>
+  </div>
+
+  <!-- 아이폰 설치 -->
+  <div id="ios-section" style="display:none">
+    <div class="status-box info">🍎 Safari에서만 설치 가능합니다</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-txt">하단 가운데 <b>공유 버튼 ⬆</b> 탭</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-txt"><b>"홈 화면에 추가"</b> 선택</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-txt">오른쪽 상단 <b>"추가"</b> 탭</div></div>
+    </div>
+    <button class="btn btn-fix" onclick="doRepair()">🔧 앱이 안 열리면? 여기 눌러 수리</button>
+    <button class="btn btn-open" onclick="goApp()">앱 열기</button>
+  </div>
+
+  <!-- 카톡 등 인앱 브라우저 -->
+  <div id="inapp-section" style="display:none">
+    <div class="status-box warn">⚠️ 카카오톡/라인 브라우저로는 설치 불가<br><b>크롬(안드로이드)</b> 또는 <b>Safari(아이폰)</b>으로 열어주세요</div>
+    <div id="inapp-android" style="display:none">
+      <a class="btn btn-main" id="chrome-link">📲 크롬으로 열기</a>
+    </div>
+    <div id="inapp-ios" style="display:none">
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-txt">오른쪽 하단 <b>⋯ 버튼</b> 탭</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-txt"><b>"Safari로 열기"</b> 선택</div></div>
+      </div>
     </div>
   </div>
 
-  <!-- 크롬/사파리에서 열린 경우 → 설치 안내 -->
-  <div id="chrome-guide" style="display:none">
-    <div id="android-guide" style="display:none">
-      <div class="warn" id="install-wait" style="display:none">⏳ 설치 준비 중... 잠시만 기다려주세요</div>
-      <a id="install-btn" class="btn" style="display:none" onclick="doInstall()">📲 TeamFlex 앱 설치하기</a>
-      <div id="manual-guide" style="display:none">
-        <div class="step">
-          <b>크롬 메뉴로 설치:</b><br>
-          ① 오른쪽 상단 <b>⋮ 버튼</b> 탭<br>
-          ② <b>"홈 화면에 추가"</b> 선택<br>
-          ③ <b>"추가"</b> 탭 → 완료!
-        </div>
-      </div>
+  <!-- PC -->
+  <div id="pc-section" style="display:none">
+    <div class="status-box info">💻 PC에서도 앱으로 설치할 수 있어요</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-txt">주소창 오른쪽 <b>설치 아이콘(⬇)</b> 클릭</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-txt"><b>"설치"</b> 클릭 → 바탕화면 앱으로 설치됨</div></div>
     </div>
-    <div id="ios-guide" style="display:none">
-      <div class="step">
-        <b>🍎 아이폰 설치 방법:</b><br>
-        ① 하단 가운데 <b>공유 버튼 ⬆️</b> 탭<br>
-        ② <b>"홈 화면에 추가"</b> 선택<br>
-        ③ 오른쪽 상단 <b>"추가"</b> 탭 → 완료!
-      </div>
+    <div class="divider"></div>
+    <div class="qr-section">
+      <img src="data:image/png;base64,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" alt="QR코드">
+      <p>📱 폰으로 QR 스캔 → 모바일 앱 설치</p>
     </div>
-    <a href="/" class="btn-outline">설치 후 → 앱 열기</a>
+    <button class="btn btn-open" onclick="goApp()">앱 바로 열기</button>
   </div>
+
+  <p class="small" id="url-hint" style="margin-top:12px">teamflex-cp.github.io</p>
 </div>
 
 <script>
-var APP_URL = 'https://teamflex-cp.github.io/';
+var APP = 'https://teamflex-cp.github.io/';
+var INSTALL_URL = 'https://teamflex-cp.github.io/install.html';
 var deferredPrompt = null;
 
-var ua = navigator.userAgent;
-var isKakao = /KAKAOTALK/i.test(ua);
-var isLine = /Line\//i.test(ua);
-var isFacebook = /FBAN|FBAV/i.test(ua);
-var isInApp = isKakao || isLine || isFacebook || /instagram/i.test(ua);
-var isIos = /iphone|ipad|ipod/i.test(ua);
-var isAndroid = /android/i.test(ua);
-var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+function goApp(){ location.href = APP; }
 
-// 이미 설치된 경우 → 앱으로 바로 이동
-if(isStandalone) {
-  location.href = '/';
+async function doRepair() {
+  var btn = event.target;
+  btn.textContent = '🔧 수리 중...';
+  btn.disabled = true;
+  try {
+    // 서비스워커 전체 해제
+    if('serviceWorker' in navigator) {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for(var r of regs) await r.unregister();
+    }
+    // 캐시 전체 삭제
+    if('caches' in window) {
+      var keys = await caches.keys();
+      for(var k of keys) await caches.delete(k);
+    }
+    // localStorage 정리 (로그인 정보 유지)
+    var keep = {};
+    var keepKeys = ['tf_autologin','tf_pending'];
+    keepKeys.forEach(function(k){ var v=localStorage.getItem(k); if(v) keep[k]=v; });
+    localStorage.clear();
+    keepKeys.forEach(function(k){ if(keep[k]) localStorage.setItem(k,keep[k]); });
+
+    btn.textContent = '✅ 수리 완료! 앱 열기...';
+    setTimeout(function(){ location.href = APP + '?v=' + Date.now(); }, 1000);
+  } catch(e) {
+    btn.textContent = '앱 직접 열기 →';
+    btn.disabled = false;
+    btn.onclick = function(){ location.href = APP; };
+  }
 }
+
+function doInstall() {
+  if(deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(r){
+      if(r.outcome==='accepted') {
+        setTimeout(function(){ location.href = APP; }, 1500);
+      }
+    });
+  }
+}
+
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('android-wait').style.display='none';
+  document.getElementById('android-ready').style.display='block';
+});
+
+window.addEventListener('appinstalled', function(){
+  setTimeout(function(){ location.href=APP; }, 1000);
+});
+
+// 이미 설치된 PWA면 바로 앱으로
+if(window.matchMedia('(display-mode:standalone)').matches || navigator.standalone) {
+  location.href = APP;
+}
+
+var ua = navigator.userAgent;
+var isAndroid = /android/i.test(ua);
+var isIos = /iphone|ipad|ipod/i.test(ua);
+var isInApp = /KAKAOTALK|Line\/|FBAN|FBAV|instagram/i.test(ua);
+var isMobile = isAndroid || isIos;
+
+document.getElementById('loading').style.display='none';
 
 if(isInApp) {
-  // 카톡 등 내장브라우저
-  document.getElementById('kakao-guide').style.display = 'block';
+  document.getElementById('inapp-section').style.display='block';
   if(isIos) {
-    document.getElementById('ios-kakao-step').style.display = 'block';
+    document.getElementById('inapp-ios').style.display='block';
   } else {
-    // 안드로이드: intent URL로 크롬 강제 실행
-    var intentBtn = document.getElementById('chrome-intent-btn');
-    intentBtn.style.display = 'block';
-    intentBtn.href = 'intent://teamflex-cp.github.io/install.html#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fteamflex-cp.github.io%2Finstall.html;end';
+    document.getElementById('inapp-android').style.display='block';
+    document.getElementById('chrome-link').href = 'intent://teamflex-cp.github.io/install.html#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(INSTALL_URL) + ';end';
   }
+} else if(isAndroid) {
+  document.getElementById('android-section').style.display='block';
+  document.getElementById('android-wait').style.display='block';
+  setTimeout(function(){
+    if(!deferredPrompt) {
+      document.getElementById('android-wait').style.display='none';
+      document.getElementById('android-manual').style.display='block';
+    }
+  }, 3000);
+} else if(isIos) {
+  document.getElementById('ios-section').style.display='block';
 } else {
-  // 크롬 / 사파리 정상 브라우저
-  document.getElementById('chrome-guide').style.display = 'block';
-  if(isIos) {
-    document.getElementById('ios-guide').style.display = 'block';
-  } else {
-    document.getElementById('android-guide').style.display = 'block';
-    document.getElementById('install-wait').style.display = 'block';
-    // beforeinstallprompt 대기
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('install-wait').style.display = 'none';
-      document.getElementById('install-btn').style.display = 'block';
-    });
-    // 3초 기다려도 프롬프트 없으면 수동 안내
-    setTimeout(function() {
-      if(!deferredPrompt) {
-        document.getElementById('install-wait').style.display = 'none';
-        document.getElementById('manual-guide').style.display = 'block';
-      }
-    }, 3000);
-  }
-}
-
-async function doInstall() {
-  if(!deferredPrompt) return;
-  deferredPrompt.prompt();
-  var result = await deferredPrompt.userChoice;
-  if(result.outcome === 'accepted') {
-    setTimeout(function(){ location.href = '/'; }, 1500);
-  }
+  document.getElementById('pc-section').style.display='block';
 }
 </script>
 </body>
