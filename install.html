@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TeamFlex 앱 설치</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:linear-gradient(160deg,#0d1b6b,#1565c0);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:#fff;border-radius:24px;padding:32px 24px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.logo{width:90px;height:90px;border-radius:20px;margin:0 auto 20px}
+h1{font-size:22px;font-weight:900;color:#1a1a1a;margin-bottom:6px}
+.sub{font-size:14px;color:#666;margin-bottom:28px}
+.step{background:#f8f9fa;border-radius:14px;padding:16px;margin-bottom:12px;text-align:left;font-size:14px;line-height:1.8;color:#333}
+.step b{color:#1565c0}
+.btn{display:block;width:100%;padding:16px;background:#F0A500;color:#1a1a1a;border:none;border-radius:14px;font-size:17px;font-weight:900;cursor:pointer;text-decoration:none;margin-top:20px;box-shadow:0 4px 16px rgba(240,165,0,.4)}
+.btn-outline{display:block;width:100%;padding:14px;background:transparent;color:#1565c0;border:2px solid #1565c0;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;margin-top:10px}
+.warn{background:#fff3cd;border-radius:10px;padding:12px;font-size:13px;color:#856404;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="card">
+  <img src="/icons/icon-192.png" class="logo">
+  <h1>TeamFlex 앱 설치</h1>
+  <p class="sub">Logistics 기사 포털</p>
+
+  <!-- 카톡/내장브라우저 감지 → 크롬 안내 -->
+  <div id="kakao-guide" style="display:none">
+    <div class="warn">⚠️ 지금 카카오톡 브라우저입니다.<br>앱 설치를 위해 <b>크롬으로 열어야</b> 합니다.</div>
+    <div class="step">
+      <b>안드로이드</b><br>
+      ① 화면 아래 또는 오른쪽 상단 <b>⋯ 버튼</b> 탭<br>
+      ② <b>"다른 브라우저로 열기"</b> 또는<br>
+      &nbsp;&nbsp;&nbsp;<b>"크롬으로 열기"</b> 선택
+    </div>
+    <a id="chrome-intent-btn" class="btn" style="display:none">📲 크롬으로 바로 열기</a>
+    <div class="step" id="ios-kakao-step" style="display:none">
+      <b>아이폰</b><br>
+      ① 오른쪽 하단 <b>⋯ 버튼</b> 탭<br>
+      ② <b>"Safari로 열기"</b> 선택
+    </div>
+  </div>
+
+  <!-- 크롬/사파리에서 열린 경우 → 설치 안내 -->
+  <div id="chrome-guide" style="display:none">
+    <div id="android-guide" style="display:none">
+      <div class="warn" id="install-wait" style="display:none">⏳ 설치 준비 중... 잠시만 기다려주세요</div>
+      <a id="install-btn" class="btn" style="display:none" onclick="doInstall()">📲 TeamFlex 앱 설치하기</a>
+      <div id="manual-guide" style="display:none">
+        <div class="step">
+          <b>크롬 메뉴로 설치:</b><br>
+          ① 오른쪽 상단 <b>⋮ 버튼</b> 탭<br>
+          ② <b>"홈 화면에 추가"</b> 선택<br>
+          ③ <b>"추가"</b> 탭 → 완료!
+        </div>
+      </div>
+    </div>
+    <div id="ios-guide" style="display:none">
+      <div class="step">
+        <b>🍎 아이폰 설치 방법:</b><br>
+        ① 하단 가운데 <b>공유 버튼 ⬆️</b> 탭<br>
+        ② <b>"홈 화면에 추가"</b> 선택<br>
+        ③ 오른쪽 상단 <b>"추가"</b> 탭 → 완료!
+      </div>
+    </div>
+    <a href="/" class="btn-outline">설치 후 → 앱 열기</a>
+  </div>
+</div>
+
+<script>
+var APP_URL = 'https://teamflex-portal.netlify.app/';
+var deferredPrompt = null;
+
+var ua = navigator.userAgent;
+var isKakao = /KAKAOTALK/i.test(ua);
+var isLine = /Line\//i.test(ua);
+var isFacebook = /FBAN|FBAV/i.test(ua);
+var isInApp = isKakao || isLine || isFacebook || /instagram/i.test(ua);
+var isIos = /iphone|ipad|ipod/i.test(ua);
+var isAndroid = /android/i.test(ua);
+var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+// 이미 설치된 경우 → 앱으로 바로 이동
+if(isStandalone) {
+  location.href = '/';
+}
+
+if(isInApp) {
+  // 카톡 등 내장브라우저
+  document.getElementById('kakao-guide').style.display = 'block';
+  if(isIos) {
+    document.getElementById('ios-kakao-step').style.display = 'block';
+  } else {
+    // 안드로이드: intent URL로 크롬 강제 실행
+    var intentBtn = document.getElementById('chrome-intent-btn');
+    intentBtn.style.display = 'block';
+    intentBtn.href = 'intent://teamflex-portal.netlify.app/install.html#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fteamflex-portal.netlify.app%2Finstall.html;end';
+  }
+} else {
+  // 크롬 / 사파리 정상 브라우저
+  document.getElementById('chrome-guide').style.display = 'block';
+  if(isIos) {
+    document.getElementById('ios-guide').style.display = 'block';
+  } else {
+    document.getElementById('android-guide').style.display = 'block';
+    document.getElementById('install-wait').style.display = 'block';
+    // beforeinstallprompt 대기
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('install-wait').style.display = 'none';
+      document.getElementById('install-btn').style.display = 'block';
+    });
+    // 3초 기다려도 프롬프트 없으면 수동 안내
+    setTimeout(function() {
+      if(!deferredPrompt) {
+        document.getElementById('install-wait').style.display = 'none';
+        document.getElementById('manual-guide').style.display = 'block';
+      }
+    }, 3000);
+  }
+}
+
+async function doInstall() {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  var result = await deferredPrompt.userChoice;
+  if(result.outcome === 'accepted') {
+    setTimeout(function(){ location.href = '/'; }, 1500);
+  }
+}
+</script>
+</body>
+</html>
