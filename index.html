@@ -599,12 +599,17 @@ async function syncFromSupabase(){
 
     // 2. 공지사항 동기화
     var aRes=await sbClient.from('announcements').select('*').order('created_at',{ascending:false}).limit(30);
-    if(aRes.data&&aRes.data.length>0){
-      var anns=aRes.data.map(function(a){
-        return {id:a.id,title:a.title,content:a.body||a.content||'',
-                author:a.author||'관리자',important:a.pinned||false,at:a.created_at};
-      });
-      localStorage.setItem('tfann',JSON.stringify(anns));
+    if(!aRes.error){
+      if(aRes.data&&aRes.data.length>0){
+        var anns=aRes.data.map(function(a){
+          return {id:a.id,title:a.title,content:a.body||a.content||'',
+                  author:a.author||'관리자',important:a.pinned||false,at:a.created_at};
+        });
+        localStorage.setItem('tfann',JSON.stringify(anns));
+      } else {
+        // Supabase 공지가 비어있으면 로컬 캐시도 비우기
+        localStorage.setItem('tfann',JSON.stringify([]));
+      }
     }
 
     // 3. 주차 스케줄 동기화 (최근 8주)
