@@ -2816,6 +2816,10 @@ function pgSettings(){
   });
 
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
+    '<div class="card" style="border:2px solid #1565c0"><div class="ctit" style="color:#1565c0">&#x1F4F6; Supabase 연동 상태</div>'+
+    '<div id="sb-diag-box" style="font-size:13px;color:#555;padding:8px 0">탭하여 확인</div>'+
+    '<button class="btn-ok" style="background:#1565c0" onclick="runSbDiag()">&#x1F504; 지금 동기화 테스트</button>'+
+    '</div>'+
     '<div class="card"><div class="ctit">&#x1F510; 관리자 계정 관리</div>'+
     '<div class="cfg-row">'+
     '<div class="cfg-label" style="margin-bottom:8px">관리자 목록</div>'+
@@ -2834,6 +2838,33 @@ function pgSettings(){
     '<div class="card"><div class="ctit">&#x1F4E2; 공지 작성 권한</div>'+
     '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
     '<div class="perm-checks">'+annChecks+'</div></div></div>';
+}
+async function runSbDiag(){
+  var box=document.getElementById('sb-diag-box');
+  if(!box)return;
+  box.style.color='#888';
+  box.textContent='🔄 Supabase 연결 중...';
+  try{
+    if(!sbClient){box.style.color='#e53935';box.textContent='❌ sbClient 없음 - Supabase 초기화 실패';return;}
+    box.textContent='🔄 weekly_schedules 조회 중...';
+    var today=new Date();
+    var cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-14);
+    var future=new Date(today);future.setDate(future.getDate()+90);
+    var res=await sbClient.from('weekly_schedules')
+      .select('week_start,driver_name,work_date,route')
+      .gte('week_start',cutoff.toISOString().slice(0,10))
+      .lte('week_start',future.toISOString().slice(0,10))
+      .limit(100);
+    if(res.error){box.style.color='#e53935';box.innerHTML='❌ 오류: '+res.error.message;return;}
+    var rows=res.data||[];
+    var weeks=[...new Set(rows.map(function(r){return r.week_start;}))].sort();
+    var myRows=rows.filter(function(r){return CU&&r.driver_name===CU.name;});
+    box.style.color='#2e7d32';
+    box.innerHTML='✅ 연결 성공!<br>'+'📊 전체 행: <b>'+rows.length+'건</b><br>'+'📅 주차: <b>'+weeks.length+'개</b> ('+weeks.slice(0,3).join(', ')+(weeks.length>3?'...':'')+')<br>'+'👤 내 스케줄: <b>'+myRows.length+'건</b><br>'+'<span style="font-size:11px;color:#888">'+new Date().toLocaleTimeString()+'</span>';
+    await syncFromSupabase();
+    _reRenderCurTab();
+    box.innerHTML+='<br>🔁 동기화 완료 → 화면 갱신됨';
+  }catch(e){box.style.color='#e53935';box.textContent='❌ 예외: '+String(e);}
 }
 function togglePerm(type,role,checked){
   var cfg=getCfg();
