@@ -2869,13 +2869,13 @@ async function runSbDiag(){
       .select('week_start,driver_name,work_date,route')
       .gte('week_start',cutoff.toISOString().slice(0,10))
       .lte('week_start',future.toISOString().slice(0,10))
-      .limit(100);
+      .order('week_start',{ascending:true}).limit(20000);
     if(res.error){box.style.color='#e53935';box.innerHTML='❌ 오류: '+res.error.message;return;}
     var rows=res.data||[];
     var weeks=[...new Set(rows.map(function(r){return r.week_start;}))].sort();
     var myRows=rows.filter(function(r){return CU&&r.driver_name===CU.name;});
     box.style.color='#2e7d32';
-    box.innerHTML='✅ 연결 성공!<br>'+'📊 전체 행: <b>'+rows.length+'건</b><br>'+'📅 주차: <b>'+weeks.length+'개</b> ('+weeks.slice(0,3).join(', ')+(weeks.length>3?'...':'')+')<br>'+'👤 내 스케줄: <b>'+myRows.length+'건</b><br>'+'<span style="font-size:11px;color:#888">'+new Date().toLocaleTimeString()+'</span>';
+    box.innerHTML='✅ 연결 성공!<br>'+'📊 전체 행: <b>'+rows.length+'건</b><br>'+'📅 주차: <b>'+weeks.length+'개</b><br>'+weeks.map(function(w){return '  '+w+' ('+rows.filter(function(r){return r.week_start===w;}).length+'건)';}).join('<br>')+'<br>'+'👤 내 스케줄: <b>'+myRows.length+'건</b><br>'+'<span style="font-size:11px;color:#888">'+new Date().toLocaleTimeString()+'</span>';
     await syncFromSupabase();
     _reRenderCurTab();
     box.innerHTML+='<br>🔁 동기화 완료 → 화면 갱신됨';
