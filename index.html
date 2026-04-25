@@ -613,12 +613,13 @@ async function syncFromSupabase(){
       }
     }
 
-    // 3. 주차 스케줄 동기화 (최근 8주)
+    // 3. 주차 스케줄 동기화 (이번 주 일요일 기준 ~ +60일)
     var today=new Date();
-    var cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-60); // 2주 전부터
-    var future=new Date(today);future.setDate(future.getDate()+365); // 1년 후까지
-    var cutStr=cutoff.toISOString().slice(0,10);
-    var futStr=future.toISOString().slice(0,10);
+    // 이번 주 일요일(week_start) 계산 (일=0, 월=1, ..., 토=6)
+    var thisSunday=new Date(today);thisSunday.setDate(today.getDate()-today.getDay());
+    var future=new Date(thisSunday);future.setDate(thisSunday.getDate()+60); // 이번 주 일요일 기준 +60일
+    var cutStr=thisSunday.toISOString().slice(0,10); // 이번 주 일요일부터
+    var futStr=future.toISOString().slice(0,10);     // +60일 후까지
     var wRes=await sbClient.from('weekly_schedules')
       .select('*').gte('week_start',cutStr).lte('week_start',futStr).order('week_start',{ascending:true}).order('id',{ascending:true}).limit(10000);
     if(wRes.data&&wRes.data.length>0){
@@ -1078,22 +1079,19 @@ if('serviceWorker' in navigator){
   });
 }
 function clearCacheAndReload(){
+  if(!confirm('캐시를 초기화하고 앱을 최신 버전으로 업데이트합니다.\n\n로그인 정보는 유지됩니다. 계속하시겠습니까?'))return;
+  try{localStorage.setItem('tf_cache_cleared','1');}catch(e){}
   if('serviceWorker' in navigator){
     navigator.serviceWorker.getRegistrations().then(function(regs){
-      var ps=regs.map(function(r){return r.unregister();});
-      return Promise.all(ps);
+      return Promise.all(regs.map(function(r){return r.unregister();}));
     }).then(function(){
       return caches.keys();
     }).then(function(keys){
       return Promise.all(keys.map(function(k){return caches.delete(k);}));
     }).then(function(){
       window.location.reload(true);
-    }).catch(function(){
-      window.location.reload(true);
-    });
-  } else {
-    window.location.reload(true);
-  }
+    }).catch(function(){window.location.reload(true);});
+  }else{window.location.reload(true);}
 }
 
 // ── EVENTS ──────────────────────────────────────────────────────────
@@ -1504,6 +1502,17 @@ function dismissInstall(){
 
 // ── 자동 로그인 ────────────────────────────────────────────────────────
 function tryAutoLogin(){
+  // 캐시 초기화 후 재시작 감지 → 토스트 메시지 표시
+  if(localStorage.getItem('tf_cache_cleared')){
+    localStorage.removeItem('tf_cache_cleared');
+    setTimeout(function(){
+      var t=document.createElement('div');
+      t.textContent='✅ 캐시 초기화 완료. 최신 버전으로 업데이트됐습니다.';
+      t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a7a3c;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:99999;white-space:nowrap';
+      document.body.appendChild(t);
+      setTimeout(function(){t.remove();},3000);
+    },800);
+  }
   var saved=localStorage.getItem('tf_autologin');
   if(!saved){
     // 승인대기 상태 복구 (새로고침 대비)
