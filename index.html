@@ -1064,6 +1064,36 @@ document.addEventListener('visibilitychange',function(){
   },{passive:true});
 })();
 
+// ── Service Worker 자동 업데이트 (새 SW 활성화 시 페이지 자동 리로드) ─────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    // 새 SW가 활성화되면 앱을 자동 업데이트
+    window.location.reload();
+  });
+  // 앱 시작 시 SW 업데이트 체크
+  navigator.serviceWorker.ready.then(function(reg){
+    reg.update().catch(function(){});
+  });
+}
+function clearCacheAndReload(){
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      var ps=regs.map(function(r){return r.unregister();});
+      return Promise.all(ps);
+    }).then(function(){
+      return caches.keys();
+    }).then(function(keys){
+      return Promise.all(keys.map(function(k){return caches.delete(k);}));
+    }).then(function(){
+      window.location.reload(true);
+    }).catch(function(){
+      window.location.reload(true);
+    });
+  } else {
+    window.location.reload(true);
+  }
+}
+
 // ── EVENTS ──────────────────────────────────────────────────────────
 document.getElementById('uid').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('upw').focus();});
 document.getElementById('upw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
@@ -2822,7 +2852,7 @@ function pgSettings(){
     '<div class="fg" style="margin-bottom:8px"><input type="password" id="cfg-apw1" placeholder="비밀번호" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none"></div>'+
     '<div class="fg" style="margin-bottom:8px"><input type="password" id="cfg-apw2" placeholder="비밀번호 확인" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none"></div>'+
     '<div class="errmsg" id="cfg-err" style="margin-bottom:8px"></div>'+
-    '<button class="btn-ok" onclick="addAdmin()">관리자 추가</button>'+
+    '<button class="btn-ok" onclick="addAdmin()">관리자 추가</button><div style="margin-top:12px"><button class="btn-ok" style="background:#555;width:100%" onclick="clearCacheAndReload()">🔄 캐시 초기화 / 앱 업데이트</button></div>'+
     '</div></div></div>'+
     '<div class="card"><div class="ctit">&#x1F4C5; 스케줄 수정 권한</div>'+
     '<div class="cfg-row"><div class="cfg-label">수정 가능한 역할 (다중 선택)</div>'+
