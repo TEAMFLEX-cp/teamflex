@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v4
-const CACHE_NAME = 'teamflex-v4';
+// TeamFlex Service Worker v5
+const CACHE_NAME = 'teamflex-v5';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
