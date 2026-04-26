@@ -1127,8 +1127,9 @@ function _nextPopup(){
 
 function sendNotif(title,body){
   if('Notification' in window && Notification.permission==='granted'){
+    // silent:true — 소리는 Push 알림이 담당, 여기선 무음 배너만 표시
     new Notification(title,{body:body,tag:'tf-'+Date.now(),icon:'/icons/icon-192.png',
-      vibrate:[200,100,200],silent:false});
+      vibrate:[200,100,200],silent:true});
   }
 }
 
