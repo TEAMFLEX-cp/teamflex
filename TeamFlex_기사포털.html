@@ -786,7 +786,7 @@ function sbSaveAnn(ann){
           if(idx>=0){anns[idx].sb_id=sid;localStorage.setItem('tfann',JSON.stringify(anns));}
           console.log('[sbSaveAnn] 저장완료 sb_id=',sid);
           // ★ 백그라운드 Push 알림 발송 (앱 꺼져있어도 울림)
-          sendPushToAll(ann.title||'새 공지사항', ann.content||ann.body||'새 공지가 등록됐습니다.', sid);
+          sendPushToAll('📢 팀플 - '+(ann.title||'새 공지사항'), ann.content||ann.body||'새 공지가 등록됐습니다.', sid);
         }
       }).catch(function(e){console.warn('sbSaveAnn insert',e);});
   }
@@ -1246,20 +1246,23 @@ function playTpalm(){
       _playWebAudio();
     }
   }catch(e){_playWebAudio();}
-  // 2) TTS "팀! 플!" 강조 발음
+  // 2) TTS "팀플" — 크고 또렷하게
   try{
     if('speechSynthesis' in window){
       window.speechSynthesis.cancel();
-      // "팀!" 첫 번째
-      var u1=new SpeechSynthesisUtterance('팀!');
-      u1.lang='ko-KR';u1.rate=0.85;u1.pitch=1.4;u1.volume=1.0;
-      // "플!" 두 번째
-      var u2=new SpeechSynthesisUtterance('플!');
-      u2.lang='ko-KR';u2.rate=0.85;u2.pitch=1.2;u2.volume=1.0;
+      var u=new SpeechSynthesisUtterance('팀플');
+      u.lang='ko-KR';
+      u.rate=0.75;    // 느리게 → 더 크게 들림
+      u.pitch=1.3;
+      u.volume=1.0;   // 최대 볼륨
+      // 딩동 소리 끝나고 바로 발화 (딩동 0.4초)
+      setTimeout(function(){window.speechSynthesis.speak(u);},200);
+      // 한 번 더 반복 (확실히 들리도록)
       setTimeout(function(){
-        window.speechSynthesis.speak(u1);
+        var u2=new SpeechSynthesisUtterance('팀플');
+        u2.lang='ko-KR';u2.rate=0.75;u2.pitch=1.3;u2.volume=1.0;
         window.speechSynthesis.speak(u2);
-      },120);
+      },900);
     }
   }catch(e){}
   // 3) 진동
@@ -2440,7 +2443,7 @@ function submitAnn(){
   var a={id:Date.now(),title:title,body:body,important:imp,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name]};
   anns.push(a);saveAnns(anns);
   // 로컬 알림 + 전체 Push 발송
-  var notifTitle='[TeamFlex] '+(imp?'[중요] ':'')+title;
+  var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
   var notifBody=body.slice(0,80);
   playTpalm(); // 공지 발송 시 "팀플" 알림 소리
   sendNotif(notifTitle,notifBody);
