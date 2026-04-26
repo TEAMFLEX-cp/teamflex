@@ -1235,22 +1235,35 @@ _initAudioEl();
 
 function playTpalm(){
   if(!_tpAudioEl)_initAudioEl();
-  // 1) HTML5 Audio 재생 (모바일 최적화)
+  // 1) "팀!" 딩 소리 + TTS "팀플" 조합
   try{
     if(_tpAudioEl){
       _tpAudioEl.currentTime=0;
-      _tpAudioEl.volume=1.0;
+      _tpAudioEl.volume=0.7;
       var p=_tpAudioEl.play();
-      if(p){p.catch(function(e){
-        // 자동재생 차단 시 Web Audio API 폴백
-        _playWebAudio();
-      });}
+      if(p){p.catch(function(){_playWebAudio();});}
     } else {
       _playWebAudio();
     }
   }catch(e){_playWebAudio();}
-  // 2) 진동 (모바일)
-  try{if(navigator.vibrate)navigator.vibrate([150,80,150]);}catch(e){}
+  // 2) TTS "팀! 플!" 강조 발음
+  try{
+    if('speechSynthesis' in window){
+      window.speechSynthesis.cancel();
+      // "팀!" 첫 번째
+      var u1=new SpeechSynthesisUtterance('팀!');
+      u1.lang='ko-KR';u1.rate=0.85;u1.pitch=1.4;u1.volume=1.0;
+      // "플!" 두 번째
+      var u2=new SpeechSynthesisUtterance('플!');
+      u2.lang='ko-KR';u2.rate=0.85;u2.pitch=1.2;u2.volume=1.0;
+      setTimeout(function(){
+        window.speechSynthesis.speak(u1);
+        window.speechSynthesis.speak(u2);
+      },120);
+    }
+  }catch(e){}
+  // 3) 진동
+  try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
 }
 
 function _playWebAudio(){
@@ -1667,6 +1680,7 @@ function showNotifSetupBanner(){
     mo.remove();
     var perm=await Notification.requestPermission();
     if(perm==='granted'){
+      localStorage.setItem('tf_notif_granted','1'); // 영구 기록 — 다시 묻지 않음
       await registerSW();await subscribePush();
       showToast('✅ 알림이 설정됐어요!',true);
     } else {
@@ -1705,14 +1719,18 @@ function nbClose(){
 async function requestNotifAndSW(){
   await registerSW();
   if(Notification.permission==='granted'){
+    // 이미 허용됨 → 구독 등록 (한번만 물어봤다고 영구 표시)
+    localStorage.setItem('tf_notif_granted','1');
     await subscribePush();
     return;
   }
-  // 'default' 상태: 세션당 한 번만 모달 표시 (자동로그인 사용자 포함)
+  // 이미 한 번이라도 허용한 적 있으면 다시 묻지 않음
+  if(localStorage.getItem('tf_notif_granted'))return;
+  // 'default' 상태: 영구적으로 한 번만 모달 표시 (앱 껐다켜도 유지)
   if(Notification.permission==='default'){
-    var asked=sessionStorage.getItem('tf_notif_asked');
+    var asked=localStorage.getItem('tf_notif_asked');
     if(!asked){
-      sessionStorage.setItem('tf_notif_asked','1');
+      localStorage.setItem('tf_notif_asked','1');
       setTimeout(showNotifSetupBanner,800);
     }
   }
