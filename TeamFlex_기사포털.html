@@ -1062,6 +1062,32 @@ async function adminRequestNotif(){
   if(perm==='granted'){await registerSW();await subscribePush();}
 }
 
+// ── 알림 팝업 모달 ──────────────────────────────────────────────────
+var _popupQueue=[];var _popupShowing=false;
+function showAlertPopup(icon,title,msg,onConfirm){
+  _popupQueue.push({icon:icon,title:title,msg:msg,onConfirm:onConfirm});
+  if(!_popupShowing)_nextPopup();
+}
+function _nextPopup(){
+  if(_popupQueue.length===0){_popupShowing=false;return;}
+  _popupShowing=true;
+  var p=_popupQueue.shift();
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML='<div style="background:#0D2440;border:2px solid #1B6FD8;border-radius:20px;padding:28px 22px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.6)">'
+    +'<div style="font-size:44px;margin-bottom:10px">'+p.icon+'</div>'
+    +'<div style="font-size:18px;font-weight:900;color:#5BC4FF;margin-bottom:8px">'+p.title+'</div>'
+    +'<div style="font-size:14px;color:#BDD4EE;line-height:1.65;margin-bottom:22px">'+p.msg+'</div>'
+    +'<button id="popup-ok-btn" style="background:linear-gradient(135deg,#1B6FD8,#0D4B9E);color:#fff;border:none;border-radius:12px;padding:13px 40px;font-size:16px;font-weight:900;cursor:pointer;width:100%">확인</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#popup-ok-btn').onclick=function(){
+    ov.remove();_popupShowing=false;
+    if(p.onConfirm)p.onConfirm();
+    setTimeout(_nextPopup,200);
+  };
+}
+
 function sendNotif(title,body){
   if('Notification' in window && Notification.permission==='granted'){
     new Notification(title,{body:body,tag:'teamflex-local',icon:'/icons/icon-192.png',
@@ -1069,12 +1095,94 @@ function sendNotif(title,body){
   }
 }
 
-// ── "팀플" 알림 소리 (카톡 "카톡" 방식) ───────────────────────���─────
+// ── Supabase Realtime 구독 (앱 변경 즉시 알림) ───────────────────────
+var _realtimeChannel=null;
+function startRealtime(){
+  if(!sbClient||!CU)return;
+  // 기존 구독 해제
+  if(_realtimeChannel){sbClient.removeChannel(_realtimeChannel);_realtimeChannel=null;}
+  _realtimeChannel=sbClient.channel('teamflex-realtime')
+    // ① 공지사항 새 글
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},function(payload){
+      var ann=payload.new||{};
+      var isImportant=ann.pinned||ann.important;
+      playTpalm();
+      sendNotif('📢 새 공지사항',ann.title||'새 공지가 등록됐습니다.');
+      showAlertPopup(
+        isImportant?'🚨':'📢',
+        '새 공지사항',
+        '<b>'+(ann.title||'새 공지')+'</b><br><span style="font-size:12px;color:#88AACC">'+(ann.body||ann.content||'').slice(0,60)+'</span>',
+        function(){go(CU.role==='admin'?'ab':'nc');}
+      );
+    })
+    // ② 스케줄 변경
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'weekly_schedules'},function(payload){
+      var e=payload.new||{};
+      // 나와 관련된 변경인지 확인
+      var isMyChange=e.driver_name===CU.name||(payload.old&&payload.old.driver_name===CU.name);
+      syncFromSupabase().then(function(){_reRenderCurTab();});
+      if(isMyChange||CU.role==='admin'||CU.role==='leader'){
+        playTpalm();
+        sendNotif('📅 스케줄 변경','스케줄이 업데이트됐습니다. 확인하세요.');
+        showAlertPopup(
+          '📅','스케줄 변경',
+          (e.work_date||'')+'<br>'+(e.driver_name||'')+'님 스케줄이 변경됐습니다.',
+          function(){go(CU.role==='admin'?'as':'fs');}
+        );
+      }
+    })
+    // ③ 스케줄 새 등록 (INSERT)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_schedules'},function(payload){
+      syncFromSupabase().then(function(){_reRenderCurTab();});
+    })
+    // ④ 정산내역 등록
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'monthly_stats'},function(payload){
+      var s=payload.new||{};
+      // 내 정산인 경우만 알림
+      var db=getDB();var myId=CU?CU.id:'';
+      if(s.driver_id&&(s.driver_id===myId||CU.role==='admin')){
+        playTpalm();
+        var month=(s.year||'')+'년 '+(s.month||'')+'월';
+        sendNotif('💰 정산내역 등록',month+' 정산내역이 등록됐습니다.');
+        showAlertPopup(
+          '💰','정산내역 등록',
+          month+' 정산내역이 등록됐습니다.<br>정산 탭에서 확인하세요.',
+          function(){go(CU.role==='admin'?'az':'st');}
+        );
+      }
+    })
+    .subscribe(function(status){
+      console.log('[Realtime] 구독 상태:',status);
+    });
+}
+function stopRealtime(){
+  if(_realtimeChannel&&sbClient){sbClient.removeChannel(_realtimeChannel);_realtimeChannel=null;}
+}
+
+// ── "팀플" 알림 소리 (카톡 "카톡" 방식) ────────────────────────────
+// 모바일 브라우저 오디오 잠금 해제 — 첫 번째 터치 시 AudioContext 활성화
 var _tpAudioCtx=null;
+var _audioUnlocked=false;
+function _unlockAudio(){
+  if(_audioUnlocked)return;
+  _audioUnlocked=true;
+  if(!_tpAudioCtx){
+    try{_tpAudioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+  }
+  if(_tpAudioCtx&&_tpAudioCtx.state==='suspended'){
+    _tpAudioCtx.resume().catch(function(){});
+  }
+}
+document.addEventListener('touchstart',_unlockAudio,{passive:true,once:false});
+document.addEventListener('click',_unlockAudio,{once:false});
+
 function playTpalm(){
-  // 1) Web Audio API로 "딩동" 음색 (항상 동작)
+  // 오디오 잠금 해제 시도
+  _unlockAudio();
+  // 1) Web Audio API로 "딩동" 음색
   try{
     if(!_tpAudioCtx)_tpAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(_tpAudioCtx.state==='suspended')_tpAudioCtx.resume();
     var ctx=_tpAudioCtx;
     // 첫 번째 음: 맑은 높은 음 (딩)
     (function(startTime,freq,dur){
@@ -1754,6 +1862,7 @@ function clearAutoLogin(){
 function doLogout(){
   // Clear daily popup key so it shows again on next login
   if(CU)localStorage.removeItem('tfdaily_'+CU.name);
+  stopRealtime(); // Realtime 구독 해제
   clearAutoLogin(); // 자동로그인 초기화
   CU=null;EDIT_MODE=false;SCHED_WK='';MY_WK='';SETTLE_MONTH=-1;SETTLE_ADMIN_MONTH=-1;CHART_OPEN=false;
   document.getElementById('app').style.display='none';
@@ -1798,6 +1907,8 @@ function launchApp(){
   }
   checkUnreadAnns(false);updateNavDots();
   if(CU.role!=='admin')setTimeout(checkDailyPopup,400);
+  // Supabase Realtime 구독 시작
+  setTimeout(startRealtime, 1000);
 }
 
 function checkDailyPopup(){
