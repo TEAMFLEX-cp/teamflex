@@ -1020,6 +1020,8 @@ var PUSH_EDGE_URL='https://czpinyfirgvkhdfnvkls.supabase.co/functions/v1/send-pu
 var _swReg=null;
 var _unreadAnnIds=[];   // 미확인 공지 ID 목록
 var _reminderTimer=null;
+var _schedPushTimer=null;   // 스케줄 변경 Push 디바운스 타이머
+var _schedPushChanges=[];   // 디바운스 기간 중 누적된 변경 목록
 
 // Service Worker 코드 (blob으로 등록)
 var SW_CODE=`
@@ -1271,6 +1273,9 @@ function _onSchedChange(e, old){
   _addSchedChange(workDate,route,oldDriver,newDriver);
   playTpalm();
   showToast('📅 업무 수정 '+dateStr+' — 변경이력 탭 확인',true);
+
+  // 관리자: 해당 기사/팀장/조장 폰으로 Push 발송 (3초 디바운스)
+  _queueSchedPush(workDate,route,oldDriver,newDriver);
 }
 
 function stopRealtime(){
@@ -1284,6 +1289,31 @@ document.addEventListener('touchstart',_unlockAudio,{passive:true,once:false});
 function playTpalm(){
   // 진동만 (소리는 Notification API / Push가 OS 기본 알림음으로 처리)
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+}
+
+// ── 스케줄 변경 Push (관리자만 발송, 3초 디바운스로 묶음 처리) ──────────
+function _queueSchedPush(workDate, route, oldDriver, newDriver){
+  if(!CU||CU.role!=='admin')return;
+  _schedPushChanges.push({workDate:workDate,route:route,oldDriver:oldDriver,newDriver:newDriver});
+  clearTimeout(_schedPushTimer);
+  _schedPushTimer=setTimeout(function(){
+    var changes=_schedPushChanges.splice(0);
+    if(changes.length===0)return;
+    var title='📅 업무 변경 알림 '+changes.length+'건';
+    var lines=changes.slice(0,4).map(function(c){
+      var ds=_fmtSchedDate(c.workDate);
+      var rStr=c.route?'['+c.route+'] ':'';
+      var ch;
+      if(c.oldDriver&&c.newDriver&&c.oldDriver!==c.newDriver)
+        ch=c.oldDriver+' → '+c.newDriver;
+      else if(c.newDriver) ch=c.newDriver+' 신규 배정';
+      else if(c.oldDriver) ch=c.oldDriver+' 배정 취소';
+      else ch='변경';
+      return ds+' '+rStr+ch;
+    });
+    if(changes.length>4)lines.push('외 '+(changes.length-4)+'건 더');
+    sendPushToAll(title,lines.join('\n'),'sched_'+Date.now());
+  }, 3000); // 3초 후 일괄 발송
 }
 
 // 공지 발송 + Edge Function 호출
