@@ -92,11 +92,14 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .rp{display:inline-block;background:#e3f2fd;color:#1565c0;border-radius:6px;padding:4px 9px;font-size:12px;font-weight:700;margin:2px}
 .nos{color:#ccc;font-size:13px}
 /* FULL SCHEDULE */
-.fgrp{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;overflow:hidden}
-.fgh{color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* 전체 스케줄 공통 가로 스크롤 컨테이너 */
+#sched-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
+#sched-inner{min-width:520px;}
+.fgrp{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;overflow:visible}
+.fgh{color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-radius:14px 14px 0 0}
 .fc{font-size:14px;font-weight:800}
 .fn2{margin-left:auto;font-size:12px;opacity:.8}
-.ftw{overflow-x:auto}
+.ftw{overflow-x:visible}
 table.ft{width:100%;border-collapse:collapse;font-size:12px;min-width:520px;table-layout:fixed}
 table.ft th{background:#e8eaf6;color:#3949ab;padding:8px 4px;text-align:center;font-weight:700;border-bottom:2px solid #c5cae9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 table.ft th.rth{text-align:center;width:96px;background:#dde0f5;color:#1a1a1a}
@@ -1389,12 +1392,18 @@ function _reRenderCurTab(){
   // 스크롤 위치 저장 (재렌더 후 복원)
   var mc=document.getElementById('mc');
   var mcST=mc?mc.scrollTop:0;
+  // 단일 스크롤 컨테이너(#sched-scroll-wrap) 또는 구형 .ftw 둘 다 저장
+  var schedSL=0;
+  var sw=document.getElementById('sched-scroll-wrap');
+  if(sw)schedSL=sw.scrollLeft;
   var ftwSL=Array.from(document.querySelectorAll('.ftw')).map(function(el){return el.scrollLeft;});
   go(m[1]);
   // 스크롤 복원 (DOM 교체 후 다음 프레임에서)
   requestAnimationFrame(function(){
     var mc2=document.getElementById('mc');
     if(mc2)mc2.scrollTop=mcST;
+    var sw2=document.getElementById('sched-scroll-wrap');
+    if(sw2&&schedSL)sw2.scrollLeft=schedSL;
     document.querySelectorAll('.ftw').forEach(function(el,i){
       if(ftwSL[i])el.scrollLeft=ftwSL[i];
     });
@@ -2853,6 +2862,9 @@ function moveSchedWeek(delta){
   var newIdx=idx+delta;if(newIdx<0||newIdx>=keys.length)return;
   SCHED_WK=keys[newIdx];EDIT_MODE=false;
   document.getElementById('mc').innerHTML=pgFullSched();
+  // 주차 이동 시 스크롤 처음으로
+  var sw=document.getElementById('sched-scroll-wrap');
+  if(sw)sw.scrollLeft=0;
 }
 function toggleEdit(){
   if(!EDIT_MODE && CU && CU.role!=='admin'){
@@ -2908,6 +2920,8 @@ function pgFullSched(){
   // Re-check today (set after loop may miss if today is also sat/sun)
   if(todayColIdx>=0)colClasses[todayColIdx]='tod-col';
 
+  // 단일 가로 스크롤 컨테이너 시작 — 모든 조가 동시에 가로 스크롤됨
+  h+='<div id="sched-scroll-wrap"><div id="sched-inner">';
   for(var gi=0;gi<wk.g.length;gi++){
     var g=wk.g[gi];var lk=g.l.join('|');
     var ldisplay=g.l.map(function(n){return (n.indexOf('팀장')>=0?'★ ':'')+n;}).join(' / ');
@@ -3002,6 +3016,8 @@ function pgFullSched(){
       '<span class="fn2">'+g.rt.length+'개 라우트</span></div>'+
       '<div class="ftw"><table class="ft">'+colGrp+'<thead><tr>'+hdr+'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
+  // 스크롤 컨테이너 닫기
+  h+='</div></div>';
   return h;
 }
 function escQ(s){return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
