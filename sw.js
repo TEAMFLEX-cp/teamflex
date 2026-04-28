@@ -112,13 +112,16 @@ async function checkScheduleInBackground() {
   await dbSet('snap_' + name, currSnap);
   await dbSet('lastCheck_' + name, new Date().toISOString());
 
-  if (Object.keys(prevSnap).length === 0) return; // 첫 실행
+  if (Object.keys(prevSnap).length === 0) return; // 첫 실행 → 기준값만 저장
 
-  // 변경 감지
+  // 변경 감지 (오늘 이전 날짜는 무시 — 날짜 경계 오탐 방지)
   const allKeys = new Set([...Object.keys(prevSnap), ...Object.keys(currSnap)]);
   const changes = [];
 
   for (const key of allKeys) {
+    const [workDate, route] = key.split('|');
+    if (workDate < today) continue; // 과거 날짜 건너뜀
+
     const oldD = prevSnap[key] || '';
     const newD = currSnap[key] || '';
     if (oldD === newD) continue;
@@ -128,7 +131,6 @@ async function checkScheduleInBackground() {
     else if (role === 'driver') relevant = (name === oldD || name === newD);
     if (!relevant) continue;
 
-    const [workDate, route] = key.split('|');
     changes.push({ workDate, route, oldDriver: oldD, newDriver: newD });
   }
 
