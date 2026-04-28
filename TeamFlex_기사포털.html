@@ -740,49 +740,45 @@ async function syncFromSupabase(){
       }
     }
 
-    // 4. 월별 정산 동기화 (Supabase monthly_stats → SETTLE 덮어쓰기)
+    // 4. 월별 정산 동기화 (Supabase monthly_stats → SM 업데이트)
+    // 우선순위: ①상세내역 있는 기존 데이터 유지 > ②Supabase 금액만 표시 > ③공란
     var mRes=await sbClient.from('monthly_stats').select('driver_id,year,month,gross,net').limit(500);
     if(mRes.data&&mRes.data.length>0){
-      // driver_id → 이름 매핑 (drivers 테이블 기준)
+      // driver_id → 이름 매핑 (내장 ID 테이블 + drivers 테이블 병행)
       var idToName={};
+      var _ID2NAME={"romeo815two":"강승오","ktf2517":"권오승","kwjj7462":"김근형","ehdtjs2345":"김동선","mikim49":"김민기","injolee1":"김병진","ny7917":"김성국","mydaedu":"김승태","model8031":"김연이","janadic":"김재현","ktd6969":"김태동","hozzangm":"김현정","hjra23":"나형준","ryujun":"류준선","mailhwan012":"박문도","jini8090":"박성진","performershs":"박종헌","minji1724":"서민지","sdyoung306":"송덕영","wosong1":"송우석","asdabc02":"윤진아","kccguy80":"이경용","lyg1223":"이성국","tjd369":"이성준","s2lee527":"이승석","oujin":"이진희","wkd0405":"장준범","jsw6745":"정승원","goskan789":"정원준","end7751":"조계환","myttang1004":"조명근","kumajo84":"조준형","nana1212":"진취영","casio81":"한선준","ghd1212":"홍순자","barflair":"황윤근","threeh40":"황형희"};
+      Object.keys(_ID2NAME).forEach(function(id){idToName[id]=_ID2NAME[id];idToName[id+'@df']=_ID2NAME[id];});
       if(res.data){res.data.forEach(function(d){
-        if(d.driver_id)idToName[d.driver_id]=d.name;
-        if(d.login_id)idToName[d.login_id]=d.name;
-        // @df 없는 버전도 매핑
-        if(d.driver_id)idToName[d.driver_id.replace('@df','')]=d.name;
+        if(d.driver_id&&d.name){idToName[d.driver_id]=d.name;idToName[d.driver_id.replace('@df','')]=d.name;}
+        if(d.login_id&&d.name)idToName[d.login_id]=d.name;
       });}
+
       mRes.data.forEach(function(r){
-        var nm=idToName[r.driver_id]||idToName[r.driver_id.replace('@df','')]||null;
+        var did=(r.driver_id||'');
+        var nm=idToName[did]||idToName[did.replace('@df','')]||null;
         if(!nm)return;
-        var label=r.year+'년 '+r.month+'월 정산';
-        var entry={
-          header:label,
-          total_rev:r.gross||0,    // 화면이 읽는 필드명 맞춤
-          net_pay:r.net||0,        // 화면이 읽는 필드명 맞춤
-          total_deduction:(r.gross||0)-(r.net||0),
-          revenue_rows:[],deduction_rows:[],
-          total_rev_qty:0,daily:[],
-          _from_supabase:true
-        };
-        // SETTLE[nm]이 배열이면 해당 월 업데이트/추가, 단일 객체면 배열로 전환
-        if(!SETTLE[nm]){
-          SETTLE[nm]=[entry];
-        } else if(!Array.isArray(SETTLE[nm])){
-          var existing=SETTLE[nm];
-          // 기존 단일 객체와 같은 월이면 교체, 아니면 배열로
-          if(existing.header&&existing.header.indexOf(r.month+'월')>=0){
-            SETTLE[nm]=entry; // 같은 월: 업데이트
-          } else {
-            SETTLE[nm]=[existing,entry]; // 다른 월: 배열로
-          }
-        } else {
-          var found=false;
-          for(var i=0;i<SETTLE[nm].length;i++){
-            if(SETTLE[nm][i].header&&SETTLE[nm][i].header.indexOf(r.month+'월')>=0){
-              SETTLE[nm][i]=entry;found=true;break;
-            }
-          }
-          if(!found)SETTLE[nm].push(entry);
+        var monthNum=parseInt(r.month)||0;
+        if(monthNum<1||monthNum>12)return;
+        var mIdx=String(monthNum-1); // 1월→'0', 2월→'1', 3월→'2' …
+        if(!SM[nm])SM[nm]={};
+        var existing=SM[nm][mIdx];
+        var hasDetail=existing&&existing.revenue_rows&&existing.revenue_rows.length>0;
+        if(hasDetail){
+          // 0순위: 상세내역 있음 → 금액만 Supabase 값으로 갱신 (내역은 보존)
+          SM[nm][mIdx].total_rev=r.gross||0;
+          SM[nm][mIdx].net_pay=r.net||0;
+          SM[nm][mIdx].total_deduction=(r.gross||0)-(r.net||0);
+        }else{
+          // 1순위: 상세내역 없음 → Supabase 금액만 표시 엔트리 생성
+          SM[nm][mIdx]={
+            header:(r.year||2026)+'년 '+monthNum+'월 정산',
+            total_rev:r.gross||0,
+            net_pay:r.net||0,
+            total_deduction:(r.gross||0)-(r.net||0),
+            revenue_rows:[],deduction_rows:[],
+            total_rev_qty:0,daily:[],
+            _from_supabase:true   // 금액만 있는 간략 엔트리 표시
+          };
         }
       });
     }
@@ -3073,20 +3069,21 @@ function pgSettle(){
         '<div class="ml" style="color:#bbb">'+m+'</div>'+
         '<div style="flex:1;font-size:12px;color:#bbb;padding-left:10px">데이터 없음</div></div>';
     }
-    var supplyTxt=md.supply_price?'(공급가액 : '+fmt(md.supply_price)+'원)':'';
     var mlColor=isLatestData?'#0d47a1':'#1a237e';
-    return '<div class="mrow'+extraCls+(isOpen?' active':'')+'" onclick="showMonthDetail('+i+')">'+
-      '<div class="ml" style="color:'+mlColor+';font-weight:800;min-width:32px">'+m+'</div>'+
-      '<div style="flex:1;padding:0 10px;min-width:0">'+
-        '<div style="font-size:13px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
-          '세금계산서 : <b>'+fmt(md.total_rev||0)+'원</b> '+
-          '<span style="color:#888;font-size:12px">'+supplyTxt+'</span>'+
+    var isSbOnly=md._from_supabase&&(!md.revenue_rows||md.revenue_rows.length===0);
+    var sbBadge=isSbOnly?'<span style="font-size:9px;background:#e3f2fd;color:#1565c0;border-radius:8px;padding:1px 6px;margin-left:4px;vertical-align:middle">세금계산서</span>':'';
+    return '<div class="mrow'+extraCls+(isOpen?' active':'')+'" onclick="showMonthDetail('+i+')" style="padding:10px 14px;align-items:flex-start">'+
+      '<div class="ml" style="color:'+mlColor+';font-weight:800;min-width:34px;padding-top:3px">'+m+'</div>'+
+      '<div style="flex:1;padding:0 8px;min-width:0">'+
+        '<div style="font-size:12px;color:#555;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+          '세금계산서 : <b style="color:#3949ab">'+fmt(md.total_rev||0)+'원</b>'+sbBadge+
+        '</div>'+
+        '<div style="font-size:14px;font-weight:800;color:#1565c0;white-space:nowrap">'+
+          '실지급 : '+fmt(md.net_pay||0)+'원'+
         '</div>'+
       '</div>'+
-      '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'+
-        '<div style="font-size:13px;font-weight:800;color:#1565c0;white-space:nowrap">실지급 : '+fmt(md.net_pay||0)+'원</div>'+
-        '<span style="font-size:11px;color:#aaa">'+(isOpen?'&#x25B2;':'&#x25BC;')+'</span>'+
-      '</div></div>';
+      '<span style="font-size:11px;color:#aaa;padding-top:6px;flex-shrink:0">'+(isOpen?'&#x25B2;':'&#x25BC;')+'</span>'+
+      '</div>';
   }).join('');
   var totalNet=monthData.reduce(function(acc,md){return acc+(md?md.net_pay:0);},0);
   var totalRev=monthData.reduce(function(acc,md){return acc+(md?md.total_rev:0);},0);
@@ -3180,13 +3177,37 @@ function renderSettleDetail(s){
     '<td>'+(tMan?tMan.toLocaleString('ko-KR'):'-')+'</td>'+
     '<td style="color:#2e7d32">'+(tFresh?tFresh.toLocaleString('ko-KR')+'원':'-')+'</td></tr>';
 
-  // Header info
-  var infoLine=hdrLine?'<div style="font-size:11px;color:#888;margin-bottom:6px">'+hdrLine+'</div>':'';
+  // 헤더 월 레이블 추출 (header에서 "3월 정산" 형태 파싱)
+  var mLabel='';
+  var mMatch=(hdrLine||'').match(/(\d+)월\s*정산/);
+  if(mMatch)mLabel=mMatch[1]+'월';
+  var periodStr=hdrLine.replace(/^.*정산\s*/,'').replace(/\(|\)/g,'');
 
-  return '<div class="nh">'+infoLine+
-    '<div class="nl">2026년 03월 실지급액</div>'+
-    '<div class="na">'+fmt(s.net_pay)+'원</div>'+
-    '<div class="np">'+hdrLine.replace(/^.*정산\s*/,'').replace(/\(|\)/g,'')+'</div></div>'+
+  // 간략 뷰 (Supabase 금액만 있는 경우: _from_supabase && no revenue_rows)
+  var isSbOnly=s._from_supabase&&(!revRows||revRows.length===0);
+  if(isSbOnly){
+    return '<div class="nh" style="text-align:center">'+
+      '<div class="nl" style="opacity:.8">'+(mLabel?mLabel+' ':'')+'세금계산서 발행금액</div>'+
+      '<div style="font-size:26px;font-weight:800;letter-spacing:-1px;margin:6px 0;opacity:.85">'+fmt(s.total_rev||0)+'원</div>'+
+      '<div style="width:60%;margin:8px auto;border-top:1px solid rgba(255,255,255,.3)"></div>'+
+      '<div class="nl" style="opacity:.8">'+(mLabel?mLabel+' ':'')+'실지급액</div>'+
+      '<div class="na">'+fmt(s.net_pay||0)+'원</div>'+
+      '<div class="np">세금계산서 입력 금액 기준</div>'+
+    '</div>';
+  }
+
+  // 상세 뷰 헤더 (상세내역 있는 경우)
+  var infoLine=hdrLine?'<div style="font-size:11px;opacity:.7;margin-bottom:4px">'+hdrLine+'</div>':'';
+  var heroHtml='<div class="nh" style="text-align:center">'+infoLine+
+    '<div class="nl" style="opacity:.8">'+(mLabel?mLabel+' ':'')+'세금계산서 발행금액</div>'+
+    '<div style="font-size:26px;font-weight:800;letter-spacing:-1px;margin:6px 0;opacity:.85">'+fmt(s.total_rev||0)+'원</div>'+
+    '<div style="width:60%;margin:8px auto;border-top:1px solid rgba(255,255,255,.3)"></div>'+
+    '<div class="nl" style="opacity:.8">'+(mLabel?mLabel+' ':'')+'실지급액</div>'+
+    '<div class="na">'+fmt(s.net_pay||0)+'원</div>'+
+    (periodStr?'<div class="np">'+periodStr+'</div>':'')+
+  '</div>';
+
+  return heroHtml+
     '<div class="card"><div class="ctit">&#x1F4E6; 수익 내역</div>'+revTable+'</div>'+
     '<div class="card"><div class="ctit">&#x1F4C9; 차감 내역</div>'+dedHtml+
     (totalDed?'<div class="dr sub"><span class="dl">총 차감</span><span class="dv dred">'+fmt(totalDed)+'원</span></div>':'')+
