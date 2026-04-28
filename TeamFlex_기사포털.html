@@ -2603,12 +2603,16 @@ function pgHome(){
       chItems+'</div>';
   }
 
+  // 이번 주 내 스케줄 (항상 맨 아래)
+  var schedSection='<div class="card"><div class="ctit">&#x1F4C5; 이번 주 내 스케줄 ('+weekLabel(curWk)+')</div>'+weekRows+'</div>';
+
   return '<div class="hero">'+
     '<div class="hn" style="font-size:16px;margin-bottom:4px">안녕하세요, '+CU.name+' '+greet+' &#x1F44B;</div>'+
     '<div class="rg"><div class="rb"><div class="rd">오늘 라우트</div><div class="rv">'+rhtml(tr)+'</div></div>'+
     '<div class="rb"><div class="rd">내일 라우트</div><div class="rv">'+rhtml(tmr)+'</div></div></div></div>'+
     annSection+
-    changeSection;
+    changeSection+
+    schedSection;
 }
 
 // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────
