@@ -1847,9 +1847,9 @@ document.addEventListener('visibilitychange',function(){
     var before=_awHash();
     syncFromSupabase().then(function(){
       var after=_awHash();
-      // 항상 화면 갱신 (스크롤 위치 보존) — 변경 여부와 무관하게 최신 데이터 표시
-      _reRenderCurTab();
+      // 데이터 변경 시에만 화면 재렌더 (날씨 깜빡임 방지)
       if(after!==before){
+        _reRenderCurTab();
         console.log('[Auto] 변경 감지 → 화면 갱신 + 알림');
         // "팀플" 알림 소리
         playTpalm();
@@ -3559,13 +3559,30 @@ function _renderWeather(data){
   }
   _renderHourlyBody(0,data);
   _renderHourlyBody(1,data);
-  // 오늘 날씨 이펙트 (오늘칸 canvas에만)
-  if(data.daily&&data.daily.weathercode){
-    var todayCode=parseInt(data.daily.weathercode[0]);
-    if(todayCode>=50&&todayCode<=67)_startWxEffect('rain');
-    else if(todayCode>=70&&todayCode<=86)_startWxEffect('snow');
-    else _stopWxEffect();
+  // 오늘 아이콘: current_weather(실시간) > hourly(현재시각) > daily 순서로 우선
+  var nowCode=0;
+  if(data.current_weather&&data.current_weather.weathercode!==undefined){
+    // 가장 정확: API가 반환한 현재 날씨 코드
+    nowCode=parseInt(data.current_weather.weathercode);
+  } else if(data.hourly&&data.hourly.weathercode&&data.hourly.time){
+    var nowH=new Date().getHours();
+    var todayStr=todStr();
+    var curIdx=data.hourly.time.findIndex(function(t){return t===todayStr+'T'+String(nowH).padStart(2,'0')+':00';});
+    if(curIdx<0)curIdx=data.hourly.time.findIndex(function(t){return t.startsWith(todayStr);});
+    nowCode=curIdx>=0?parseInt(data.hourly.weathercode[curIdx]):parseInt((data.daily&&data.daily.weathercode&&data.daily.weathercode[0])||0);
+  } else if(data.daily&&data.daily.weathercode){
+    nowCode=parseInt(data.daily.weathercode[0]);
   }
+  // 현재 날씨로 오늘 아이콘/라벨 덮어쓰기
+  var w0now=_wCode(nowCode);
+  var iconEl0=document.getElementById('wd-0-icon');
+  var lblEl0=document.getElementById('wd-0-lbl');
+  if(iconEl0)iconEl0.textContent=w0now.icon;
+  if(lblEl0)lblEl0.textContent=w0now.label;
+  // 비/눈 이펙트도 현재 기준
+  if(nowCode>=50&&nowCode<=67)_startWxEffect('rain');
+  else if(nowCode>=70&&nowCode<=86)_startWxEffect('snow');
+  else _stopWxEffect();
   // 지역명 표시
   var locEl=document.getElementById('wx-location');
   if(locEl&&_weatherCity)locEl.textContent='\uD83D\uDCCD '+_weatherCity;
@@ -3635,23 +3652,26 @@ function _stopWxEffect(){
   if(canvas)canvas.style.display='none';
 }
 async function loadWeather(){
-  var todayKey=todStr();
+  // 정시마다 새로 불러오기: 캐시 키 = 날짜+시각(시) ex) "2026-05-04T06"
+  var _nowH=new Date().getHours();
+  var todayKey=todStr()+'T'+String(_nowH).padStart(2,'0');
   if(_weatherCache&&_weatherCacheDate===todayKey){_renderWeather(_weatherCache);return;}
   try{
-    var lsW=localStorage.getItem('tfweather3');
+    var lsW=localStorage.getItem('tfweather4');
     if(lsW){var lsD=JSON.parse(lsW);if(lsD.date===todayKey&&lsD.data){_weatherCache=lsD.data;_weatherCacheDate=todayKey;if(lsD.city){_weatherCity=lsD.city;}_renderWeather(lsD.data);return;}}
   }catch(e){}
   if(!navigator.geolocation){return;}
   var _doFetch=async function(lat,lon){
     try{
       var url='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
+        '&current_weather=true'+
         '&daily=weathercode,temperature_2m_max,temperature_2m_min'+
-        '&hourly=precipitation,snowfall'+
+        '&hourly=weathercode,precipitation,snowfall'+
         '&timezone=Asia%2FSeoul&forecast_days=3';
       var r=await fetch(url);var data=await r.json();
       if(data&&data.daily){
         _weatherCache=data;_weatherCacheDate=todayKey;
-        try{localStorage.setItem('tfweather3',JSON.stringify({date:todayKey,data:data,lat:lat,lon:lon,city:_weatherCity}));}catch(e){}
+        try{localStorage.setItem('tfweather4',JSON.stringify({date:todayKey,data:data,lat:lat,lon:lon,city:_weatherCity}));}catch(e){} // date = YYYY-MM-DDTHH
         // 역지오코딩 (도시명, 한 번만)
         if(!_weatherCity){
           fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lon+'&format=json&accept-language=ko',{headers:{'User-Agent':'TeamFlexApp/1.0'}})
@@ -3659,7 +3679,7 @@ async function loadWeather(){
               var a=geo.address||{};
               var city=a.city||a.county||a.town||a.village||a.state||'';
               if(city){_weatherCity=city;
-                try{var sw=JSON.parse(localStorage.getItem('tfweather3')||'{}');sw.city=city;localStorage.setItem('tfweather3',JSON.stringify(sw));}catch(ex){}
+                try{var sw=JSON.parse(localStorage.getItem('tfweather4')||'{}');sw.city=city;localStorage.setItem('tfweather4',JSON.stringify(sw));}catch(ex){}
                 var le=document.getElementById('wx-location');if(le)le.textContent='\uD83D\uDCCD '+city;
               }
             }).catch(function(){});
@@ -3669,7 +3689,7 @@ async function loadWeather(){
     }catch(e){}
   };
   try{
-    var savedLoc=localStorage.getItem('tfweather3');
+    var savedLoc=localStorage.getItem('tfweather4');
     if(savedLoc){var sd=JSON.parse(savedLoc);if(sd.lat&&sd.lon){_doFetch(sd.lat,sd.lon);return;}}
   }catch(e){}
   var _req=function(){
