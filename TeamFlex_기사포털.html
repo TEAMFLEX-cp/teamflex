@@ -1973,36 +1973,7 @@ function doLogin(){
     launchApp();setTimeout(showNotifSetupBanner,800);return;
   }
   var db=getDB();var drv=db[name];
-  if(!drv){
-    // 새 기기 — 로컬에 없으면 Supabase에서 직접 조회 후 재시도
-    if(sbClient){
-      document.getElementById('lerr').textContent='⏳ 서버에서 확인 중...';
-      document.getElementById('btnLogin').disabled=true;
-      (async function(){
-        try{
-          var sr=await sbClient.from('drivers').select('*').eq('name',name).single();
-          if(sr.data){
-            var _db=getDB();
-            _db[sr.data.name]=_db[sr.data.name]||{};
-            Object.assign(_db[sr.data.name],sr.data);
-            saveDB(_db);
-            document.getElementById('lerr').textContent='';
-            document.getElementById('btnLogin').disabled=false;
-            doLogin();
-          } else {
-            document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';
-            document.getElementById('btnLogin').disabled=false;
-          }
-        }catch(e){
-          document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';
-          document.getElementById('btnLogin').disabled=false;
-        }
-      })();
-    } else {
-      document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';
-    }
-    return;
-  }
+  if(!drv){document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';return;}
   if(drv.status==='blocked'||drv.status==='kicked'){document.getElementById('lerr').textContent='강퇴된 계정입니다. 관리자에게 문의하세요.';return;}
   if(drv.status==='inactive'){
     // Supabase 실제 상태 확인 (로컬 stale 방지)
@@ -2063,38 +2034,7 @@ function doLogin(){
     }
     return;
   }
-  // 로컬 비밀번호 불일치 → Supabase 최신 비밀번호로 재확인
-  if(sbClient&&drv.status==='approved'){
-    document.getElementById('lerr').textContent='⏳ 확인 중...';
-    document.getElementById('btnLogin').disabled=true;
-    (async function(){
-      try{
-        var sr=await sbClient.from('drivers').select('password,status,role,phone').eq('name',name).single();
-        if(sr.data&&sr.data.password===pw){
-          // Supabase 비밀번호 일치 → 로컬 갱신 후 로그인
-          var _db=getDB();
-          if(_db[name]){
-            _db[name].password=sr.data.password;
-            if(sr.data.status)_db[name].status=sr.data.status;
-            if(sr.data.role)_db[name].role=sr.data.role;
-            if(sr.data.phone)_db[name].phone=sr.data.phone;
-            saveDB(_db);
-          }
-          document.getElementById('lerr').textContent='';
-          document.getElementById('btnLogin').disabled=false;
-          doLogin();
-        } else {
-          document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
-          document.getElementById('btnLogin').disabled=false;
-        }
-      }catch(e){
-        document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
-        document.getElementById('btnLogin').disabled=false;
-      }
-    })();
-  } else {
-    document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
-  }
+  document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
 }
 
 // 전화번호 정규화 (숫자만 추출)
@@ -6738,4 +6678,47 @@ function setSchedMinLockDays(days){
   document.getElementById('mc').innerHTML=pgSettings();
 }
 async function saveContactsPw(){
-  var pw=document.getElementById('cf
+  var pw=document.getElementById('cfg-cpw').value.trim();
+  var cfg=getCfg();cfg.contactsPw=pw;saveCfg(cfg);
+  _contactsUnlocked=false;
+  alert(pw?'연락처 비밀번호가 설정되었습니다.':'연락처 비밀번호가 해제되었습니다.');
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+function clearContactsPw(){
+  var cfg=getCfg();cfg.contactsPw='';saveCfg(cfg);
+  _contactsUnlocked=false;
+  alert('연락처 잠금이 해제되었습니다.');
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+async function saveAdminCreds(){
+  var aid=document.getElementById('cfg-aid').value.trim();
+  var apw1=document.getElementById('cfg-apw1').value;
+  var apw2=document.getElementById('cfg-apw2').value;
+  var errEl=document.getElementById('cfg-err');
+  errEl.textContent='';
+  if(!aid){errEl.textContent='아이디를 입력해주세요.';return;}
+  if(apw1.length<4){errEl.textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
+  if(apw1!==apw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
+  // 1. localStorage 저장
+  var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
+  // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
+  if(sbClient){
+    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
+    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+    var {error:sbErr}=await sbClient.from('misdelivery_settings')
+      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
+      .eq('id',1);
+    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
+    if(sbErr){
+      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
+      errEl.style.color='#e65100';
+      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
+      // localStorage는 저장됐으므로 현재 기기에선 적용됨
+      setTimeout(function(){
+        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
+        doLogout();
+      },300);
+      return;
+    }
+  }
+  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n
