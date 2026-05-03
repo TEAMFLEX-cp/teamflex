@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v7 — 백그라운드 스케줄 체크 + Push 알림
-const CACHE_NAME = 'teamflex-v7';
+// TeamFlex Service Worker v18 — 백그라운드 스케줄 체크 + Push 알림
+const CACHE_NAME = 'teamflex-v70';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -149,14 +149,15 @@ async function checkScheduleInBackground() {
   });
   if (changes.length > 4) lines.push('외 ' + (changes.length - 4) + '건 더');
 
-  await self.registration.showNotification('📅 업무 변경 알림 ' + changes.length + '건', {
+  // 스케줄 변경 알림 임시 비활성화
+  return;
+    await self.registration.showNotification('📅 업무 변경 알림 ' + changes.length + '건', {
     body: lines.join('\n'),
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     tag: 'tf-sched-' + Date.now(),
     renotify: true,
     requireInteraction: true,
-    vibrate: [300, 150, 300, 150, 300],
     data: { url: '/TeamFlex_기사포털.html' }
   });
 }
@@ -175,7 +176,6 @@ self.addEventListener('push', e => {
     renotify:           true,
     requireInteraction: true,
     silent:             false,
-    vibrate:            [300, 150, 300, 150, 300],
     data:               d.data || {}
   };
   e.waitUntil(self.registration.showNotification(title, opts));
