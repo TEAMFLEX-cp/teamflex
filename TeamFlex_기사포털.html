@@ -5244,7 +5244,7 @@ function requirePwSection(section, callback){
 // ── 비상연락망 ──────────────────────────────────────────────────────────
 function pgEmergencyContact(){
   var db=getDB();
-  var canSeeCarNo=(CU.role==='admin'||CU.role==='leader'||CU.role==='sub');
+  var canSeeCarNo=true; // 차량번호 전체 공개
   var canManage=(CU.role==='admin'||CU.role==='leader');
   var roleOrder={admin:0,leader:1,sub:2,driver:3};
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'};
@@ -5446,7 +5446,7 @@ function erImportExcel(input){
 }
 function erSearch(q){
   var db=getDB();
-  var canSeeCarNo=(CU.role==='admin'||CU.role==='leader'||CU.role==='sub');
+  var canSeeCarNo=true; // 차량번호 전체 공개
   var canManage=(CU.role==='admin'||CU.role==='leader');
   var roleOrder={admin:0,leader:1,sub:2,driver:3};
   var roleColors={'admin':'#c62828','leader':'#1565c0','sub':'#6a1b9a','driver':'#2e7d32'};
