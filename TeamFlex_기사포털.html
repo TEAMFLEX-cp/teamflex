@@ -4765,13 +4765,14 @@ function pgFullSched(){
         var rowspanAttr='';if(spanVal>1)rowspanAttr=' rowspan="'+spanVal+'"';
         // Per-leader cell color: each leader uses their own LC color, not the group color
         var cellGC=isLead&&LCM[dBase]?LCM[dBase]:gc;
+        var _isToday=(tdCC==='tod-col');
         if(!driver){
           cells+='<td class="empty'+(tdCC?' '+tdCC:'')+'"'+rowspanAttr+'>-</td>';
         } else if(EDIT_MODE){
-          var eStyle=isLead?(' style="background:'+cellGC.lt+';color:'+cellGC.mtx+';font-weight:800"'):'';
+          var eStyle=isLead?(' style="background:'+cellGC.lt+';color:'+(_isToday?'#1a1a1a':cellGC.mtx)+';font-weight:800"'):(_isToday?' style="color:#1a1a1a"':'');
           cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+ddisp+'</td>';
         } else {
-          var lStyle=isLead?(' style="background:'+cellGC.lt+';color:'+cellGC.mtx+';font-weight:800"'):'';
+          var lStyle=isLead?(' style="background:'+cellGC.lt+';color:'+(_isToday?'#1a1a1a':cellGC.mtx)+';font-weight:800"'):(_isToday?' style="color:#1a1a1a"':'');
           cells+='<td class="dname'+(tdCC?' '+tdCC:'')+'"'+lStyle+rowspanAttr+'>'+ddisp+'</td>';
         }
       }
@@ -6729,11 +6730,4 @@ async function resetAdminCreds(){
   var cfg=getCfg();
   delete cfg.adminId;delete cfg.adminPw;saveCfg(cfg);
   if(sbClient){
-    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(function(){});
-  }
-  alert('관리자 계정이 초기화됐습니다. 기본 계정으로 로그인해주세요.');
-  doLogout();
-}
-
-</script>
-</body></html>
+    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(func
