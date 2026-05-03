@@ -790,7 +790,13 @@ async function syncFromSupabase(){
         else if(_localStatus==='approved'&&sbClient){
           (function(n,s){sbClient.from('drivers').update({status:s,synced_at:new Date().toISOString()}).eq('name',n).then(function(){}).catch(function(e){console.warn('[Sync fix]',e);});})(d.name,_localStatus);
         }
-        db[d.name].password=d.password||'1234';
+        // 비밀번호 동기화: approved 상태이고 로컬에 이미 1234가 아닌 비밀번호가 있으면 덮어쓰지 않음
+        var _localPw=db[d.name].password;
+        var _sbPw=d.password||'1234';
+        if(!_localPw||_localPw==='1234'||_sbStatus!=='approved'){
+          db[d.name].password=_sbPw;
+        }
+        // (approved + 로컬에 실제 비밀번호 있으면 유지 — 기사가 설정한 비밀번호 보호)
         db[d.name].phone=d.phone||'';
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
@@ -2063,7 +2069,38 @@ function doLogin(){
     }
     return;
   }
-  document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
+  // 로컬 비밀번호 불일치 → Supabase 최신 비밀번호로 재확인
+  if(sbClient&&drv.status==='approved'){
+    document.getElementById('lerr').textContent='⏳ 확인 중...';
+    document.getElementById('btnLogin').disabled=true;
+    (async function(){
+      try{
+        var sr=await sbClient.from('drivers').select('password,status,role,phone').eq('name',name).single();
+        if(sr.data&&sr.data.password===pw){
+          // Supabase 비밀번호 일치 → 로컬 갱신 후 로그인
+          var _db=getDB();
+          if(_db[name]){
+            _db[name].password=sr.data.password;
+            if(sr.data.status)_db[name].status=sr.data.status;
+            if(sr.data.role)_db[name].role=sr.data.role;
+            if(sr.data.phone)_db[name].phone=sr.data.phone;
+            saveDB(_db);
+          }
+          document.getElementById('lerr').textContent='';
+          document.getElementById('btnLogin').disabled=false;
+          doLogin();
+        } else {
+          document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
+          document.getElementById('btnLogin').disabled=false;
+        }
+      }catch(e){
+        document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
+        document.getElementById('btnLogin').disabled=false;
+      }
+    })();
+  } else {
+    document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
+  }
 }
 
 // 전화번호 정규화 (숫자만 추출)
@@ -6697,41 +6734,4 @@ function setSchedMinLockDays(days){
       .then(function(r){
         if(r&&r.error){
           // 컬럼 없으면 SQL 안내
-          console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0\';');
-          showToast('⚠ 잠금 설정 저장 실패 — SQL 실행 필요',false);
-        }else{
-          showToast('🔒 잠금 설정이 모든 기기에 적용됩니다',true);
-        }
-      }).catch(function(e){console.warn('[setSchedLock]',e);});
-  }
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-async function saveContactsPw(){
-  var pw=document.getElementById('cfg-cpw').value.trim();
-  var cfg=getCfg();cfg.contactsPw=pw;saveCfg(cfg);
-  _contactsUnlocked=false;
-  alert(pw?'연락처 비밀번호가 설정되었습니다.':'연락처 비밀번호가 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-function clearContactsPw(){
-  var cfg=getCfg();cfg.contactsPw='';saveCfg(cfg);
-  _contactsUnlocked=false;
-  alert('연락처 잠금이 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-async function saveAdminCreds(){
-  var aid=document.getElementById('cfg-aid').value.trim();
-  var apw1=document.getElementById('cfg-apw1').value;
-  var apw2=document.getElementById('cfg-apw2').value;
-  var errEl=document.getElementById('cfg-err');
-  errEl.textContent='';
-  if(!aid){errEl.textContent='아이디를 입력해주세요.';return;}
-  if(apw1.length<4){errEl.textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
-  if(apw1!==apw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
-  // 1. localStorage 저장
-  var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
-  // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
-  if(sbClient){
-    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
-    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
-    var {error:s
+          console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0
