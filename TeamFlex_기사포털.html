@@ -1872,7 +1872,7 @@ function doManualRefresh(){
   var btn=document.getElementById('btnRefresh');
   if(btn){btn.disabled=true;btn.innerHTML='&#x1F504; 동기화 중...';}
   if(sbClient){
-    syncFromSupabase().then(function(){
+    Promise.all([syncFromSupabase(), loadAdminCfgFromSB()]).then(function(){
       _reRenderCurTab();
       if(btn){btn.disabled=false;btn.innerHTML='&#x1F504; 새로고침';}
       showToast('✅ 업데이트 완료',false);
@@ -5269,7 +5269,8 @@ function pgEmergencyContact(){
     var smsBtn=phone
       ?'<a href="sms:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e7d32;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">💬 문자</a>'
       :'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">💬 문자</span>';
-    var kakaoBtn=phone
+    var kakaoId=(d.kakao_id||'').trim();
+    var kakaoBtn=kakaoId
       ?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>'
       :'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
     var editBtn=canManage
@@ -5485,7 +5486,7 @@ function erSearch(q){
     var rl=roleLabel[d.role]||'기사';
     var callBtn=phone?'<a href="tel:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#1565c0;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">📞 전화</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">📞 전화</span>';
     var smsBtn=phone?'<a href="sms:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e7d32;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">💬 문자</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">💬 문자</span>';
-    var kakaoBtn=phone?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
+    var kakaoId=(d.kakao_id||'').trim();var kakaoBtn=kakaoId?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
     var editBtn=canManage?'<button onclick="erEditDriver(\''+d.name+'\')" style="padding:6px 12px;background:#f0f4ff;border:1px solid #c5cae9;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;cursor:pointer;white-space:nowrap;flex-shrink:0">✏️ 수정</button>':'';
     var _carSt2=carNo?'background:#e3f2fd;border:2px solid #64b5f6;color:#1565c0':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
     var carBadge=canSeeCarNo?'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_carSt2+';border-radius:10px;padding:7px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden">🚗 '+(carNo||'미등록')+'</span>':'';
@@ -5637,7 +5638,8 @@ function pgPhoneBook(){
     var smsBtn=phone
       ?'<a href="sms:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e7d32;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">💬 문자</a>'
       :'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">💬 문자</span>';
-    var kakaoBtn=phone
+    var kakaoId=(d.kakao_id||'').trim();
+    var kakaoBtn=kakaoId
       ?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>'
       :'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
     var _carStPh=carNo?'background:#e3f2fd;border:2px solid #64b5f6;color:#1565c0':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
@@ -5758,7 +5760,7 @@ function phSearch(q){
     var rl=roleLabel[d.role]||'기사';
     var callBtn=phone?'<a href="tel:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#1565c0;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">📞 전화</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">📞 전화</span>';
     var smsBtn=phone?'<a href="sms:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e7d32;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">💬 문자</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">💬 문자</span>';
-    var kakaoBtn=phone?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
+    var kakaoId=(d.kakao_id||'').trim();var kakaoBtn=kakaoId?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
     var _carStPs=carNo?'background:#e3f2fd;border:2px solid #64b5f6;color:#1565c0':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
     var carBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_carStPs+';border-radius:10px;padding:7px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden">🚗 '+(carNo||'미등록')+'</span>';
     var _cpStPs=coupangId?'background:#e8f5e9;border:2px solid #66bb6a;color:#1b5e20':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
@@ -5808,7 +5810,8 @@ async function savePhoneEdit(){
 }
 function _drvInfoChips(d){
   var chips='';
-  if(d.birth_date){
+  var _canSeeBirth=(CU&&(CU.role==='admin'||CU.role==='leader'));
+  if(d.birth_date&&_canSeeBirth){
     var bd=String(d.birth_date).split('-')[0]||String(d.birth_date).slice(0,6);
     bd=bd.replace(/[^0-9]/g,'').slice(0,6);
     if(bd.length===6)bd=bd.slice(0,2)+'.'+bd.slice(2,4)+'.'+bd.slice(4,6);
@@ -6047,7 +6050,7 @@ async function _applyPhoneData(data, type){
     sbUpdates.forEach(function(u){var nm=u.name;var uc=JSON.parse(JSON.stringify(u));delete uc.name;profiles[nm]=uc;});
     try{
       var pr=await sbClient.from('misdelivery_settings').update({driver_profiles:JSON.stringify(profiles)}).eq('id',1);
-      if(pr&&pr.error){sbFail=sbUpdates.length;console.warn('[profiles]',pr.error);}
+      if(pr&&pr.error){sbFail=sbUpdates.length;console.warn('[profiles]',pr.error);console.error('[profiles 오류]',JSON.stringify(pr.error));}
       else{sbOk=sbUpdates.length;}
     }catch(e){sbFail=sbUpdates.length;console.warn('[profiles]',e);}
   }
