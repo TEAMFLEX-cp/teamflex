@@ -1281,6 +1281,7 @@ async function loadAdminCfgFromSB(){
           Object.keys(profiles).forEach(function(nm){
             if(!pdb[nm])return;
             var p=profiles[nm];
+            if(p.phone)pdb[nm].phone=p.phone;
             if(p.car_no)pdb[nm].car_no=p.car_no;
             if(p.coupang_id)pdb[nm].coupang_id=p.coupang_id;
             if(p.birth_date)pdb[nm].birth_date=p.birth_date;
