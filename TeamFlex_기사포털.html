@@ -794,14 +794,14 @@ async function syncFromSupabase(){
         db[d.name].phone=d.phone||'';
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
-        // 차량번호, 쿠팡ID, 카톡ID, 블라인드 동기화 (값 있을 때만 덮어씀)
-        if(d.car_no!==undefined&&d.car_no!==null)db[d.name].car_no=d.car_no;
-        if(d.coupang_id!==undefined&&d.coupang_id!==null)db[d.name].coupang_id=d.coupang_id;
-        if(d.kakao_id!==undefined&&d.kakao_id!==null)db[d.name].kakao_id=d.kakao_id;
-        if(d.birth_date!==undefined&&d.birth_date!==null)db[d.name].birth_date=d.birth_date;
-        if(d.car_type!==undefined&&d.car_type!==null)db[d.name].car_type=d.car_type;
-        if(d.fuel_type!==undefined&&d.fuel_type!==null)db[d.name].fuel_type=d.fuel_type;
-        if(d.blind!==undefined&&d.blind!==null)db[d.name].blind=d.blind;
+        // 차량번호, 쿠팡ID, 카톡ID, 블라인드 동기화 (값 있을 때만 덮어씀 — 빈 문자열도 무시)
+        if(d.car_no!=null&&d.car_no!=='')db[d.name].car_no=d.car_no;
+        if(d.coupang_id!=null&&d.coupang_id!=='')db[d.name].coupang_id=d.coupang_id;
+        if(d.kakao_id!=null&&d.kakao_id!=='')db[d.name].kakao_id=d.kakao_id;
+        if(d.birth_date!=null&&d.birth_date!=='')db[d.name].birth_date=d.birth_date;
+        if(d.car_type!=null&&d.car_type!=='')db[d.name].car_type=d.car_type;
+        if(d.fuel_type!=null&&d.fuel_type!=='')db[d.name].fuel_type=d.fuel_type;
+        if(d.blind!=null)db[d.name].blind=d.blind;
         // pending 기사 수집 → 관리자 승인 목록에 반영
         if(d.status==='pending'){
           pendingFromSB.push({
@@ -1845,7 +1845,7 @@ document.addEventListener('visibilitychange',function(){
   setInterval(function(){
     if(!sbClient||document.hidden)return; // 화면이 꺼져있으면 생략
     var before=_awHash();
-    syncFromSupabase().then(function(){
+    Promise.all([syncFromSupabase(), loadAdminCfgFromSB()]).then(function(){
       var after=_awHash();
       // 데이터 변경 시에만 화면 재렌더 (날씨 깜빡임 방지)
       if(after!==before){
@@ -1864,7 +1864,7 @@ document.addEventListener('visibilitychange',function(){
         // 시스템 알림도 함께
       }
     }).catch(function(){});
-  },60000); // 60초마다
+  },60000); // 60초마다 — syncFromSupabase + loadAdminCfgFromSB 함께
 })();
 
 // ── 수동 새로고침 버튼 (헤더 버튼으로만 동기화) ──────────────────────
