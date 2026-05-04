@@ -3459,14 +3459,16 @@ function _wxCardHTML(){
     '<div style="background:linear-gradient(135deg,#1565c0,#1e88e5,#42a5f5);border-radius:14px;overflow:hidden">'+
       '<div id="wx-location" style="text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1.5px;padding:7px 12px 0">&#x1F4CD; 위치 확인 중...</div>'+
       '<div style="display:flex">'+
-        '<div id="wd-0" onclick="toggleHourly(0)" style="flex:3;text-align:center;padding:14px 10px;border-right:1px solid rgba(255,255,255,.2);cursor:pointer;position:relative;overflow:hidden">'+
+        '<div id="wd-0" onclick="toggleHourly(0)" style="flex:3;text-align:center;padding:10px 10px 12px;border-right:1px solid rgba(255,255,255,.2);cursor:pointer;position:relative;overflow:hidden">'+
           '<canvas id="wx-canvas" style="position:absolute;inset:0;pointer-events:none;display:none"></canvas>'+
           '<div style="position:relative;z-index:1">'+
-            '<div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.85);margin-bottom:5px;letter-spacing:2px">오늘</div>'+
-            '<div id="wd-0-icon" style="font-size:46px;margin-bottom:5px;line-height:1">&#x23F3;</div>'+
-            '<div id="wd-0-lbl" style="font-size:16px;color:#fff;font-weight:900">-</div>'+
-            '<div id="wd-0-tmp" style="font-size:28px;font-weight:900;color:#fff;margin-top:5px;text-shadow:0 2px 6px rgba(0,0,0,.3)">--/--</div>'+
-            '<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:7px" id="wd-0-arr">&#x25BC; 강수&#xB7;적설</div>'+
+            '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.8);margin-bottom:3px;letter-spacing:2px">오늘</div>'+
+            '<div id="wd-0-icon" style="font-size:32px;margin-bottom:2px;line-height:1">&#x23F3;</div>'+
+            '<div id="wd-0-lbl" style="font-size:12px;color:rgba(255,255,255,.85);font-weight:700;margin-bottom:5px">-</div>'+
+            '<div id="wd-0-cur" style="font-size:40px;font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.2)">--°</div>'+
+            '<div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">현재 온도</div>'+
+            '<div id="wd-0-tmp" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8);margin-top:5px;background:rgba(0,0,0,.18);border-radius:8px;padding:2px 10px;display:inline-block">--/--</div>'+
+            '<div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:5px" id="wd-0-arr">&#x25BC; 강수&#xB7;적설</div>'+
           '</div>'+
         '</div>'+
         '<div id="wd-1" onclick="toggleHourly(1)" style="flex:1.5;text-align:center;padding:14px 5px;border-right:1px solid rgba(255,255,255,.2);cursor:pointer">'+
@@ -3484,11 +3486,11 @@ function _wxCardHTML(){
         '</div>'+
       '</div>'+
       '<div id="hourly-0" style="display:none;background:rgba(0,0,0,.25);padding:10px 12px">'+
-        '<div style="font-size:10px;color:rgba(255,255,255,.7);margin-bottom:6px;font-weight:700">&#x23F0; 오늘 시간대별 강수&#xB7;적설</div>'+
+        '<div style="font-size:10px;color:rgba(255,255,255,.7);margin-bottom:6px;font-weight:700">&#x23F0; ⏰ 시간별 기온·강수</div>'+
         '<div id="hourly-0-body" style="overflow-x:auto;-webkit-overflow-scrolling:touch"></div>'+
       '</div>'+
       '<div id="hourly-1" style="display:none;background:rgba(0,0,0,.25);padding:10px 12px">'+
-        '<div style="font-size:10px;color:rgba(255,255,255,.7);margin-bottom:6px;font-weight:700">&#x23F0; 내일 시간대별 강수&#xB7;적설</div>'+
+        '<div style="font-size:10px;color:rgba(255,255,255,.7);margin-bottom:6px;font-weight:700">&#x23F0; ⏰ 내일 시간별 기온·강수</div>'+
         '<div id="hourly-1-body" style="overflow-x:auto;-webkit-overflow-scrolling:touch"></div>'+
       '</div>'+
     '</div></div>';
@@ -3517,31 +3519,28 @@ function _renderHourlyBody(dayIdx,data){
   if(!el||!data.hourly)return;
   var startH=dayIdx*24;
   var nowH=new Date().getHours();
-  var items='';var hasRain=false;
+  var items='';
   for(var h=0;h<24;h++){
     if(dayIdx===0&&h<nowH)continue; // 오늘은 현재 시각 이전 생략
     var idx=startH+h;
     var pr=data.hourly.precipitation?Math.round(data.hourly.precipitation[idx]*10)/10:0;
     var sn=data.hourly.snowfall?Math.round(data.hourly.snowfall[idx]*10)/10:0;
-    if(pr>0||sn>0){
-      hasRain=true;
-      var sub='';
-      if(pr>0)sub+='<span style="font-size:10px;color:#90caf9;font-weight:800">💧'+pr+'mm</span>';
-      if(sn>0)sub+='<span style="font-size:10px;color:#e3f2fd;font-weight:800;margin-left:2px">❄️'+sn+'cm</span>';
-      items+='<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;'+
-        'background:rgba(100,181,246,.3);border:1px solid rgba(144,202,249,.6);border-radius:10px;'+
-        'padding:6px 10px;margin-right:5px;min-width:54px;white-space:nowrap">'+
-        '<div style="font-size:11px;color:#fff;font-weight:800;margin-bottom:4px">'+h+'시</div>'+sub+'</div>';
-    } else {
-      items+='<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;'+
-        'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;'+
-        'padding:6px 8px;margin-right:5px;min-width:40px;white-space:nowrap">'+
-        '<div style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;margin-bottom:2px">'+h+'시</div>'+
-        '<span style="font-size:9px;color:rgba(255,255,255,.2)">-</span></div>';
-    }
+    var tmp=data.hourly.temperature_2m?Math.round(data.hourly.temperature_2m[idx]):null;
+    var hasWet=pr>0||sn>0;
+    var bg=hasWet?'rgba(100,181,246,.35)':'rgba(255,255,255,.07)';
+    var border=hasWet?'rgba(144,202,249,.6)':'rgba(255,255,255,.1)';
+    var wetRow='';
+    if(pr>0)wetRow+='<div style="font-size:9px;color:#90caf9;font-weight:700;line-height:1.2;">💧'+pr+'mm</div>';
+    if(sn>0)wetRow+='<div style="font-size:9px;color:#e3f2fd;font-weight:700;line-height:1.2;">❄️'+sn+'cm</div>';
+    if(!hasWet)wetRow='<div style="font-size:9px;color:rgba(255,255,255,.2);">-</div>';
+    items+='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;'+
+      'background:'+bg+';border:1px solid '+border+';border-radius:9px;'+
+      'padding:5px 6px;min-width:36px;flex-shrink:0;white-space:nowrap">'+
+      '<div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:600;">'+h+'시</div>'+
+      '<div style="font-size:12px;font-weight:800;color:#fff;line-height:1;">'+(tmp!==null?tmp+'°':'--')+'</div>'+
+      wetRow+'</div>';
   }
-  if(!hasRain)items+='<span style="font-size:11px;color:rgba(255,255,255,.45);margin-left:4px">이후 강수·적설 없음</span>';
-  el.innerHTML='<div style="display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px">'+items+'</div>';
+  el.innerHTML='<div style="display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:4px;padding-bottom:3px">'+items+'</div>';
 }
 function _renderWeather(data){
   for(var i=0;i<3;i++){
@@ -3555,7 +3554,19 @@ function _renderWeather(data){
     var tmpEl=document.getElementById('wd-'+i+'-tmp');
     if(iconEl)iconEl.textContent=w.icon;
     if(lblEl)lblEl.textContent=w.label;
-    if(tmpEl)tmpEl.textContent=hi+'° / '+lo+'°';
+    if(i===0){
+      // 오늘: 최고최저는 작은 뱃지로
+      if(tmpEl)tmpEl.textContent='최고 '+hi+'° / 최저 '+lo+'°';
+    } else {
+      if(tmpEl)tmpEl.textContent=hi+'° / '+lo+'°';
+    }
+  }
+  // 오늘 현재온도 표시 (current_weather.temperature)
+  var curEl=document.getElementById('wd-0-cur');
+  if(curEl){
+    var curT=data.current_weather&&data.current_weather.temperature!==undefined
+      ?Math.round(data.current_weather.temperature):'--';
+    curEl.textContent=curT+'°';
   }
   _renderHourlyBody(0,data);
   _renderHourlyBody(1,data);
@@ -3582,6 +3593,7 @@ function _renderWeather(data){
   // 비/눈 이펙트도 현재 기준
   if(nowCode>=50&&nowCode<=67)_startWxEffect('rain');
   else if(nowCode>=70&&nowCode<=86)_startWxEffect('snow');
+  else if(nowCode<=2)_startWxEffect('sun'); // 맑음/대체로맑음
   else _stopWxEffect();
   // 지역명 표시
   var locEl=document.getElementById('wx-location');
@@ -3597,6 +3609,30 @@ function _startWxEffect(type){
   canvas.height=card.offsetHeight||160;
   canvas.style.display='block';
   var ctx=canvas.getContext('2d');
+  // ── 해 애니메이션 ──────────────────────
+  if(type==='sun'){
+    var ang=0;
+    var cx=canvas.width*0.78,cy=canvas.height*0.22,R=26;
+    function drawSun(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);
+      for(var i=0;i<12;i++){
+        var a=(Math.PI*2/12)*i;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*(R+7),Math.sin(a)*(R+7));
+        ctx.lineTo(Math.cos(a)*(R+17+(i%2===0?5:0)),Math.sin(a)*(R+17+(i%2===0?5:0)));
+        ctx.strokeStyle='rgba(255,230,60,0.45)';
+        ctx.lineWidth=2.2;ctx.lineCap='round';ctx.stroke();
+      }
+      ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,220,40,0.18)';ctx.fill();
+      ctx.restore();
+      ang+=0.007;
+      _wxAnim=requestAnimationFrame(drawSun);
+    }
+    drawSun();
+    return;
+  }
   var drops=[];
   var count=(type==='rain')?80:50;
   for(var k=0;k<count;k++){
@@ -3652,9 +3688,11 @@ function _stopWxEffect(){
   if(canvas)canvas.style.display='none';
 }
 async function loadWeather(){
-  // 정시마다 새로 불러오기: 캐시 키 = 날짜+시각(시) ex) "2026-05-04T06"
-  var _nowH=new Date().getHours();
-  var todayKey=todStr()+'T'+String(_nowH).padStart(2,'0');
+  // 30분마다 최신화: 캐시 키 = 날짜+시각+분블록 ex) "2026-05-04T06-30"
+  var _now=new Date();
+  var _nowH=_now.getHours();
+  var _nowBlock=_now.getMinutes()<30?'00':'30';
+  var todayKey=todStr()+'T'+String(_nowH).padStart(2,'0')+'-'+_nowBlock;
   if(_weatherCache&&_weatherCacheDate===todayKey){_renderWeather(_weatherCache);return;}
   try{
     var lsW=localStorage.getItem('tfweather4');
@@ -3666,7 +3704,7 @@ async function loadWeather(){
       var url='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
         '&current_weather=true'+
         '&daily=weathercode,temperature_2m_max,temperature_2m_min'+
-        '&hourly=weathercode,precipitation,snowfall'+
+        '&hourly=weathercode,temperature_2m,precipitation,snowfall'+
         '&timezone=Asia%2FSeoul&forecast_days=3';
       var r=await fetch(url);var data=await r.json();
       if(data&&data.daily){
@@ -5576,8 +5614,8 @@ function pgApproval(){
         '<div id="wd-1" onclick="toggleHourly(1)" style="flex:2;text-align:center;padding:12px 8px;border-right:1px solid rgba(255,255,255,.2);cursor:pointer"><div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:4px">내일</div><div id="wd-1-icon" style="font-size:22px;margin-bottom:2px">⏳</div><div id="wd-1-lbl" style="font-size:10px;color:#fff;font-weight:700">-</div><div id="wd-1-tmp" style="font-size:10px;color:rgba(255,255,255,.7);margin-top:1px">--/--</div><div style="font-size:8px;color:rgba(255,255,255,.5);margin-top:3px" id="wd-1-arr">▼강수·적설</div></div>'+
         '<div style="flex:1.5;text-align:center;padding:12px 8px"><div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:4px">모레</div><div id="wd-2-icon" style="font-size:20px;margin-bottom:2px">⏳</div><div id="wd-2-lbl" style="font-size:10px;color:#fff;font-weight:600">-</div><div id="wd-2-tmp" style="font-size:10px;color:rgba(255,255,255,.7);margin-top:1px">--/--</div></div>'+
       '</div>'+
-      '<div id="hourly-0" style="display:none;background:rgba(0,0,0,.25);padding:8px 12px"><div style="font-size:9px;color:rgba(255,255,255,.65);margin-bottom:4px;font-weight:700">오늘 시간대별 강수·적설</div><div id="hourly-0-body"></div></div>'+
-      '<div id="hourly-1" style="display:none;background:rgba(0,0,0,.25);padding:8px 12px"><div style="font-size:9px;color:rgba(255,255,255,.65);margin-bottom:4px;font-weight:700">내일 시간대별 강수·적설</div><div id="hourly-1-body"></div></div>'+
+      '<div id="hourly-0" style="display:none;background:rgba(0,0,0,.25);padding:8px 12px"><div style="font-size:9px;color:rgba(255,255,255,.65);margin-bottom:4px;font-weight:700">⏰ 시간별 기온·강수</div><div id="hourly-0-body"></div></div>'+
+      '<div id="hourly-1" style="display:none;background:rgba(0,0,0,.25);padding:8px 12px"><div style="font-size:9px;color:rgba(255,255,255,.65);margin-bottom:4px;font-weight:700">⏰ 내일 시간별 기온·강수</div><div id="hourly-1-body"></div></div>'+
     '</div></div>';
   setTimeout(loadWeather,200);
   if(!reqs.length)return awCard+'<div class="stit">승인 요청 관리</div>'+stats+
