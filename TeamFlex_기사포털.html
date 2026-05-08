@@ -58,11 +58,12 @@ async function msLoginAndLoadImages(){
   try{
     var r=await msalApp.loginPopup({scopes:_msGraphScopes});
     _msGraphToken=r.accessToken;
+    // 로그인 후 대기 중인 이미지들 다시 로드
     document.querySelectorAll('.md-ms-login-btn').forEach(function(btn){
       var uid=btn.getAttribute('data-uid');
       var imgUrl=btn.getAttribute('data-url');
-      var fb=decodeURIComponent(btn.getAttribute('data-fb')||'');
-      if(uid&&imgUrl)loadGraphImage(uid,imgUrl,fb);
+      var fb=btn.getAttribute('data-fb');
+      if(uid&&imgUrl)loadGraphImage(uid,imgUrl,fb||'');
     });
   }catch(e){console.warn('[MSAL] 로그인 취소:',e);}
 }
@@ -72,15 +73,17 @@ async function loadGraphImage(uid,url,fallbackHtml){
   if(!el)return;
   var token=await getMsGraphToken();
   if(!token){
+    // 로그인 버튼 포함 폴백
     var loginBtn='<button class="md-ms-login-btn" data-uid="'+uid+'" data-url="'+url+'" data-fb="'+encodeURIComponent(fallbackHtml||'')+'" onclick="this.disabled=true;msLoginAndLoadImages()" style="width:80px;height:60px;border-radius:8px;background:#e8f0fe;border:1.5px solid #4285f4;font-size:10px;color:#1565c0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;flex-shrink:0"><span style="font-size:18px">🔐</span><span>MS 로그인</span></button>';
-    el.outerHTML=loginBtn;return;
+    el.outerHTML=loginBtn;
+    return;
   }
   try{
     var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
-    if(!resp.ok){if(resp.status===401)_msGraphToken=null;throw new Error(resp.status);}
+    if(!resp.ok){if(resp.status===401){_msGraphToken=null;}throw new Error(resp.status);}
     var blob=await resp.blob();
     var blobUrl=URL.createObjectURL(blob);
-    el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(this.src)">';
+    el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(\''+blobUrl+'\')">';
   }catch(e){
     var elem=document.getElementById(uid);
     if(elem)elem.outerHTML=fallbackHtml||'';
@@ -310,7 +313,7 @@ textarea.ann-input:focus{border-color:#1565c0}
 .md-photos::-webkit-scrollbar{display:none}
 .md-photo{width:80px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer;border:2px solid transparent;transition:border-color .15s}
 .md-photo:hover{border-color:#1565c0}
-.md-photo-placeholder{width:80px;height:60px;border-radius:8px;background:#e8eaf6;display:inline-flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.md-photo-placeholder{width:80px;height:60px;border-radius:8px;background:#e8eaf6;display:inline-flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;cursor:pointer}
 .md-teams-ph{text-decoration:none;border:2px solid #c5cae9}
 .md-content{background:#fffde7;margin:0 12px 8px;border-radius:8px;padding:8px 10px;font-size:11px;color:#795548;line-height:1.6;border-left:3px solid #fbc02d}
 .md-reply-sec{padding:8px 14px 12px}
@@ -3263,7 +3266,7 @@ function go(tab){
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='dv')mc.innerHTML=pgDriverSettings();
-  else if(tab==='md'){mc.innerHTML=pgMisdelivery();mc.scrollTop=0;mdLoadCases();}
+  else if(tab==='md'){mc.innerHTML=pgMisdelivery();mc.scrollTop=0;mdLoadCases();mdFillArchiveMonths();}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
   if(CU&&tab!=='nc'&&tab!=='ab'){setTimeout(function(){checkUnreadAnns(true);},300);}
 }
@@ -4190,8 +4193,19 @@ function pgMisdelivery(){
     '</div>';
   }
 
+  var archiveSec='';
+  if(isAdmin){
+    archiveSec='<div style="margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+      '<span style="font-size:12px;color:#888;font-weight:600">📦 아카이브 조회</span>'+
+      '<select id="md-archive-month" style="flex:1;min-width:120px;padding:6px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:12px;color:#333;background:#fafafa" onchange="mdLoadArchive(this.value)">'+
+        '<option value="">-- 월 선택 --</option>'+
+      '</select>'+
+    '</div>'+
+    '<div id="md-archive-list" style="display:none"></div>';
+  }
+
   return '<div class="stit">🚨 오배송 알림</div>'+
-    modeSec+sumSec+
+    modeSec+sumSec+archiveSec+
     '<div id="md-list"><div class="md-empty"><div class="md-empty-icon">⏳</div><div>로딩 중...</div></div></div>';
 }
 
@@ -4232,8 +4246,24 @@ async function mdLoadCases(){
       if((el=document.getElementById('md-n-done')))el.textContent=nD;
     }
 
-    // 2시간 지난 완료건 자동 아카이브
+    // 30일 지난 완료건 자동 아카이브
     await mdAutoArchive(_mdCases);
+
+    // 신규 pending 케이스 알림 (아직 notified 안 된 것)
+    if(isAdmin||isLeader){
+      var notifKey='md_notified_ids';
+      var notifiedIds=JSON.parse(localStorage.getItem(notifKey)||'[]');
+      _mdCases.forEach(function(c){
+        if(c.status==='pending'&&notifiedIds.indexOf(c.id)<0){
+          notifiedIds.push(c.id);
+          mdPushToLeaders('🚨 오배송 접수',
+            (c.driver_name||c.driver_id||'기사')+'님 오배송 접수 ('+( c.waybill_no||'')+')' ,c.id);
+          mdPushToDriver(c.driver_name||'','🚨 오배송 접수됨',
+            '오배송이 접수되었습니다. 오배송 탭에서 확인 후 답변해주세요.',c.id);
+        }
+      });
+      localStorage.setItem(notifKey,JSON.stringify(notifiedIds.slice(-200)));
+    }
 
     mdRenderList(_mdCases);
   }catch(e){
@@ -4243,19 +4273,84 @@ async function mdLoadCases(){
   }
 }
 
-// ── 자동 아카이브 (처리완료 2시간 경과) ──────────────────────────────
+// ── 자동 아카이브 (처리완료 30일 경과) ───────────────────────────────
 async function mdAutoArchive(cases){
   if(!sbClient)return;
   var now=Date.now();
   var toArchive=cases.filter(function(c){
     if(c.status!=='approved')return false;
     var upd=new Date(c.created_at).getTime();
-    return (now-upd)>2*60*60*1000;
+    return (now-upd)>30*24*60*60*1000;
   });
   for(var i=0;i<toArchive.length;i++){
     await sbClient.from('misdelivery_cases')
       .update({status:'archived',archived_at:new Date().toISOString()})
       .eq('id',toArchive[i].id);
+  }
+}
+
+// ── 아카이브 월 목록 채우기 ───────────────────────────────────────────
+async function mdFillArchiveMonths(){
+  if(!sbClient)return;
+  var sel=document.getElementById('md-archive-month');
+  if(!sel)return;
+  try{
+    var {data:rows}=await sbClient.from('misdelivery_cases')
+      .select('created_at')
+      .eq('status','archived')
+      .order('created_at',{ascending:false})
+      .limit(500);
+    if(!rows||rows.length===0)return;
+    var months={};
+    rows.forEach(function(r){
+      var m=(r.created_at||'').slice(0,7); // YYYY-MM
+      if(m)months[m]=true;
+    });
+    var opts='<option value="">-- 월 선택 --</option>';
+    Object.keys(months).sort().reverse().forEach(function(m){
+      opts+='<option value="'+m+'">'+m+'</option>';
+    });
+    sel.innerHTML=opts;
+  }catch(e){console.warn('[mdFillArchiveMonths]',e);}
+}
+
+// ── 아카이브 로드 ─────────────────────────────────────────────────────
+async function mdLoadArchive(month){
+  var box=document.getElementById('md-archive-list');
+  if(!box)return;
+  if(!month){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0">로딩 중...</div>';
+  try{
+    var from=month+'-01';
+    // last day of month
+    var y=parseInt(month.split('-')[0]),mo=parseInt(month.split('-')[1]);
+    var to=new Date(y,mo,1).toISOString().slice(0,10); // first day of next month
+    var {data:cases,error}=await sbClient.from('misdelivery_cases')
+      .select('*')
+      .eq('status','archived')
+      .gte('created_at',from)
+      .lt('created_at',to)
+      .order('created_at',{ascending:false});
+    if(error)throw error;
+    if(!cases||cases.length===0){
+      box.innerHTML='<div style="font-size:12px;color:#aaa;text-align:center;padding:12px">이 달 아카이브 없음</div>';
+      return;
+    }
+    box.innerHTML='<div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px">'+month+' 아카이브 ('+cases.length+'건)</div>'+
+      cases.map(function(c){
+        return '<div style="background:#f9f9f9;border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:12px">'+
+          '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
+            '<span style="font-weight:700;color:#444">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>'+
+            '<span style="color:#bbb">'+mdEsc((c.occurred_at||c.created_at||'').slice(0,10))+'</span>'+
+          '</div>'+
+          '<div style="color:#666">'+mdEsc(c.issue_content||'-')+'</div>'+
+          '<div style="color:#aaa;font-size:11px;margin-top:2px">운송장: '+mdEsc(c.waybill_no||'-')+'</div>'+
+        '</div>';
+      }).join('');
+  }catch(e){
+    console.error('[mdLoadArchive]',e);
+    box.innerHTML='<div style="font-size:12px;color:#e53935;padding:8px">로드 실패: '+mdEsc(e.message)+'</div>';
   }
 }
 
@@ -4270,9 +4365,9 @@ function mdRenderList(cases){
   var isAdmin=CU.role==='admin';
   var isLeader=CU.role==='leader'||CU.role==='sub';
 
-  // 미처리 먼저, 그 다음 완료
+  // 승인대기(replied) 먼저, 그 다음 미답변(pending), 마지막 완료(approved)
   var sorted=cases.slice().sort(function(a,b){
-    var order={pending:0,replied:1,approved:2};
+    var order={replied:0,pending:1,approved:2};
     return (order[a.status]||0)-(order[b.status]||0)||
       new Date(b.created_at).getTime()-new Date(a.created_at).getTime();
   });
@@ -4282,9 +4377,9 @@ function mdRenderList(cases){
 
 // ── 케이스 카드 HTML ──────────────────────────────────────────────────
 function mdCardHtml(c,isAdmin,isLeader){
-  var borderCls={pending:'c-red',replied:'c-blue',approved:'c-green'}[c.status]||'c-red';
-  var badgeCls={pending:'mb-red',replied:'mb-blue',approved:'mb-green'}[c.status]||'mb-red';
-  var badgeTxt={pending:'🔴 미답변',replied:'🔵 답변완료',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
+  var borderCls={pending:'c-red',replied:'c-orange',approved:'c-green'}[c.status]||'c-red';
+  var badgeCls={pending:'mb-red',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
+  var badgeTxt={pending:'🔴 미답변',replied:'🟠 승인대기',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
 
   var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(c.driver_name||c.driver_id)+'</span>':'';
 
@@ -4292,6 +4387,7 @@ function mdCardHtml(c,isAdmin,isLeader){
   var photos='';
   var imgs=c.image_urls||(c.image_urls===null?[]:c.image_urls)||[];
   if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
+  // raw_message HTML에서 Teams 인라인 이미지 URL 추출
   var inlineImgUrls=[];
   var rawHtml=c.raw_message||'';
   var imgTagRe=/<img[^>]+src=["']([^"']+)["']/gi;
@@ -4315,10 +4411,10 @@ function mdCardHtml(c,isAdmin,isLeader){
     allImgSources.forEach(function(src){
       var uid='img-'+c.id+'-'+Math.random().toString(36).slice(2,7);
       if(src.type==='url'){
-        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="this.style.display=\'none\'">';
+        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(\''+mdEsc(src.url)+'\')" onerror="this.style.display=\'none\'">';
       } else if(src.type==='sp'){
         var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
-        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="this.parentNode.innerHTML=this.dataset.fb" data-fb="'+mdEsc(fb)+'"></span>';
+        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(\''+mdEsc(src.url)+'\')" onerror="document.getElementById(\''+uid+'\').innerHTML=\''+fb.replace(/'/g,"\\'")+'\'"></span>';
       } else if(src.type==='graph'){
         var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
         photos+='<span id="'+uid+'" class="md-photo-placeholder" style="font-size:18px">⏳</span>';
@@ -4327,7 +4423,8 @@ function mdCardHtml(c,isAdmin,isLeader){
     });
     photos+='</div>';
   }
-    // 답변 섹션은 모달에서 처리
+
+  // 답변 섹션은 모달에서 처리
   var replySec='';
 
   return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'">'+
@@ -4378,17 +4475,17 @@ function mdOpenDetail(caseId){
   if(imgs&&imgs.length>0){
     photoHtml='<div style="margin-bottom:14px">'+
       imgs.map(function(url){
-        return '<img src="'+mdEsc(url)+'" style="width:100%;border-radius:10px;object-fit:cover;margin-bottom:6px;cursor:pointer" onclick="mdViewPhoto(this.src)" onerror="this.style.display=\'none\'">';
+        return '<img src="'+mdEsc(url)+'" style="width:100%;border-radius:10px;object-fit:cover;margin-bottom:6px;cursor:pointer" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
       }).join('')+
     '</div>';
   }
 
-  var badgeCls={pending:'mb-red',replied:'mb-blue',approved:'mb-green'}[c.status]||'mb-red';
-  var badgeTxt={pending:'🔴 미답변',replied:'🔵 답변완료',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
+  var badgeCls={pending:'mb-red',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
+  var badgeTxt={pending:'🔴 미답변',replied:'🟠 승인대기',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
 
   // 답변 섹션
   var replyHtml='';
-  if(c.status==='pending'&&isDriver){
+  if((c.status==='pending'||c.status==='replied')&&isDriver){
     replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
       '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">💬 처리 내용 입력</div>'+
       '<textarea id="md-ta-'+c.id+'" class="md-ta" placeholder="처리 내용을 입력하세요..." style="width:100%;min-height:80px;box-sizing:border-box"></textarea>'+
@@ -4403,7 +4500,7 @@ function mdOpenDetail(caseId){
   var el=document.getElementById('md-detail-modal');
   if(!el){el=document.createElement('div');el.id='md-detail-modal';document.body.appendChild(el);}
   el.innerHTML='<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:24px;box-sizing:border-box;overflow-y:auto" onclick="if(event.target===this)document.getElementById(\'md-detail-modal\').style.display=\'none\'">'+
-    '<div style="background:#fff;border-radius:20px;padding:20px 16px 28px;width:calc(100% - 32px);max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin-bottom:24px">'+
+    '<div style="background:#fff;border-radius:20px;padding:20px 16px 28px;width:calc(100% - 32px);max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin-bottom:24px;max-height:calc(90vh - 48px);overflow-y:auto">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
         '<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>'+
         '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\'" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1">✕</button>'+
@@ -4418,12 +4515,17 @@ function mdOpenDetail(caseId){
       '</div>'+
       photoHtml+
       replyHtml+
+      (isAdmin?
+        '<div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
+          '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
+          '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
+        '</div>':'')+
     '</div>'+
   '</div>';
   el.style.display='block';
 
   // 답변 비동기 로드
-  if(!(c.status==='pending'&&isDriver)){
+  if(!((c.status==='pending'||c.status==='replied')&&isDriver)){
     mdLoadModalReply(c.id,isAdmin,isLeader);
   }
 }
@@ -4554,17 +4656,20 @@ async function mdSendReply(caseId){
     // 2. 케이스 상태 → replied
     await sbClient.from('misdelivery_cases').update({status:'replied'}).eq('id',caseId);
 
-    // 3. 자동 모드: 바로 Teams 게시
+    // 3. 자동 모드: 바로 Teams 게시 + ack 댓글
     if(mode==='auto'){
       await mdPostToTeams(reply.id);
+    } else {
+      // 승인 모드: 접수 확인 댓글만 먼저 게시
+      mdPostTeamsAck(caseId);
     }
 
     // 4. 화면 업데이트
     var card=document.getElementById('md-card-'+caseId);
     if(card){
       var badge=document.getElementById('md-badge-'+caseId);
-      if(badge){badge.className='md-badge mb-blue';badge.textContent='🔵 답변완료';}
-      card.className='md-card c-blue';
+      if(badge){badge.className='md-badge mb-orange';badge.textContent='🟠 승인대기';}
+      card.className='md-card c-orange';
       var sec=card.querySelector('.md-reply-sec');
       if(sec){
         var teamsMsg=mode==='auto'?'Teams 자동 게시 완료 ✅':'팀장 승인 대기 ⏳';
@@ -4584,7 +4689,7 @@ async function mdSendReply(caseId){
   }
 }
 
-// ── Teams 게시 ────────────────────────────────────────────────────────
+// ── Teams 게시 (답변 승인 후 원본글 댓글에 답변 게시) ────────────────
 async function mdPostToTeams(replyId){
   try{
     var res=await fetch(SB_URL_MD+'/functions/v1/post-teams-reply',{
@@ -4595,6 +4700,19 @@ async function mdPostToTeams(replyId){
     var json=await res.json();
     if(!json.ok) console.warn('[mdPostToTeams]',json);
   }catch(e){console.error('[mdPostToTeams]',e);}
+}
+
+// ── Teams 접수 확인 댓글 ("전달하겠습니다") ───────────────────────────
+async function mdPostTeamsAck(caseId){
+  try{
+    var res=await fetch(SB_URL_MD+'/functions/v1/post-teams-reply',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN'},
+      body:JSON.stringify({case_id:caseId,ack:true,ack_text:'확인했습니다. 담당 기사에게 전달하겠습니다.'}),
+    });
+    var json=await res.json();
+    if(!json.ok) console.warn('[mdPostTeamsAck]',json);
+  }catch(e){console.error('[mdPostTeamsAck]',e);}
 }
 
 // ── 팀장 승인 ─────────────────────────────────────────────────────────
@@ -4627,6 +4745,12 @@ async function mdApproveReply(replyId,caseId){
         var replyTxt=txt?txt.textContent:'';
         box.innerHTML='<div class="md-replied">'+mdEsc(replyTxt)+'<div class="md-replied-meta">'+mdEsc(CU.name)+' 승인 · Teams 게시 완료 ✅</div></div>';
       }
+    }
+    // 기사에게 완료 알림 푸시
+    var caseDataAppr=_mdCases.find(function(c){return c.id===caseId;});
+    if(caseDataAppr){
+      mdPushToDriver(caseDataAppr.driver_name,'✅ 오배송 처리완료','팀장이 답변을 승인하고 Teams에 게시했습니다. 오배송 탭을 확인하세요.',caseId);
+      mdPushToLeaders('✅ 오배송 승인완료',CU.name+' 승인 처리 ('+( caseDataAppr.waybill_no||'')+')',caseId);
     }
     // 카운터 갱신
     await mdLoadCases();
@@ -4673,9 +4797,9 @@ function mdRenderModeBar(mode){
 }
 
 // ── 푸시 알림 헬퍼 (Supabase Edge Function 호출) ──────────────────────
-var MD_TEST_REDIRECT='문지영'; // 테스트 중: 이 기사에게 대신 전송 (null로 바꾸면 실제 기사에게 전송)
+var MD_TEST_REDIRECT=null; // null=실제 기사에게 전송
 function mdPushToDriver(driverName,title,body,caseId){
-  var target=MD_TEST_REDIRECT||driverName; // 테스트 모드: 문지영에게 전송
+  var target=MD_TEST_REDIRECT||driverName;
   if(MD_TEST_REDIRECT&&MD_TEST_REDIRECT!==driverName){
     console.log('[TEST] 드라이버 푸시 리다이렉트:',driverName,'→',target);
     title='[테스트/'+driverName+'] '+title;
@@ -4701,6 +4825,35 @@ function mdPushToLeaders(title,body,caseId){
       data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'},
     }),
   }).catch(function(e){console.warn('[mdPushToLeaders]',e);});
+}
+
+// ── 미전송완료 처리 (관리자) ──────────────────────────────────────────
+async function mdMarkNotSent(caseId){
+  if(!sbClient||!CU)return;
+  if(!confirm('이 건을 "미전송완료"로 처리하시겠습니까?\n(Teams 게시 없이 완료 처리됩니다)'))return;
+  try{
+    await sbClient.from('misdelivery_cases').update({
+      status:'approved',
+      not_sent:true,
+      resolved_by:CU.name,
+      resolved_at:new Date().toISOString()
+    }).eq('id',caseId);
+    document.getElementById('md-detail-modal').style.display='none';
+    await mdLoadCases();
+  }catch(e){console.error('[mdMarkNotSent]',e);alert('처리 실패: '+e.message);}
+}
+
+// ── 케이스 삭제 (관리자) ──────────────────────────────────────────────
+async function mdDeleteCase(caseId){
+  if(!sbClient||!CU)return;
+  if(!confirm('이 오배송 건을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'))return;
+  try{
+    await sbClient.from('misdelivery_replies').delete().eq('case_id',caseId);
+    await sbClient.from('misdelivery_cases').delete().eq('id',caseId);
+    document.getElementById('md-detail-modal').style.display='none';
+    _mdCases=(_mdCases||[]).filter(function(c){return c.id!==caseId;});
+    mdRenderList(_mdCases);
+  }catch(e){console.error('[mdDeleteCase]',e);alert('삭제 실패: '+e.message);}
 }
 
 // ── 사진 전체화면 뷰어 ────────────────────────────────────────────────
@@ -6970,236 +7123,3 @@ function pgSettings(){
       ];
       var cur=cfg.schedMinLockDays;if(cur===undefined||cur===null)cur=0;
       return opts.map(function(o){
-        var sel=String(cur)===String(o.v);
-        var isWeek=(o.v==='week');
-        var bc=isWeek?'#7b1fa2':'#c62828';
-        var bg=isWeek?'#f3e5f5':'#ffebee';
-        var val=isWeek?'\'week\'':o.v;
-        return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?bc:'#e0e0e0')+';background:'+(sel?bg:'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?(isWeek?'#7b1fa2':'#c62828'):'#555')+'"><input type="radio" name="schedMinLock" value="'+o.v+'" '+(sel?'checked':'')+' onchange="setSchedMinLockDays('+val+')" style="accent-color:'+(isWeek?'#7b1fa2':'#c62828')+'">'+o.lbl+'</label>';
-      }).join('');
-    })()+
-    '</div></div></div>'+
-    '<div class="card"><div class="ctit">&#x1F4E2; 공지 작성 권한</div>'+
-    '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
-    '<div class="perm-checks">'+annChecks+'</div></div></div>'+
-    '<div class="card" id="md-keyword-card"><div class="ctit">🔍 오배송 감지 키워드</div>'+
-    '<div style="font-size:12px;color:#666;margin-bottom:10px">Teams 메시지에 아래 키워드가 포함되면 오배송 케이스로 자동 감지됩니다.</div>'+
-    '<div id="kw-list" style="margin-bottom:10px">'+
-    (_mdKeywords.length===0 ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">등록된 키워드 없음</div>' :
-      _mdKeywords.map(function(kw,i){
-        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'+
-          '<span style="flex:1;font-size:13px;font-weight:600;color:#1a237e;background:#f0f4ff;padding:4px 10px;border-radius:20px">'+mdEsc(kw)+'</span>'+
-          '<button onclick="mdDeleteKeyword('+i+')" style="padding:4px 10px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:12px;cursor:pointer">삭제</button>'+
-        '</div>';
-      }).join('')
-    )+
-    '</div>'+
-    '<div style="display:flex;gap:8px;margin-bottom:6px">'+
-      '<input type="text" id="kw-input" placeholder="키워드 입력 (예: 오배송, 회수 필요)" style="flex:1;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none" onkeydown="if(event.key===\'Enter\')mdAddKeyword()">'+
-      '<button class="btn-ok" onclick="mdAddKeyword()" style="padding:10px 16px">추가</button>'+
-    '</div>'+
-    '<div class="errmsg" id="kw-err"></div>'+
-    '</div>'+
-    '<div class="card" id="md-settings-card"><div class="ctit">&#x1F4AC; Teams 오배송 연동</div>'+
-    '<div class="cfg-row">'+
-    '<div class="cfg-label">Power Automate 웹훅 URL (Teams 답글 게시용)</div>'+
-    '<div class="fg" style="margin-bottom:8px"><input type="text" id="cfg-pa-url" placeholder="https://prod-xx.westus.logic.azure.com/..." style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none" oninput="mdLoadPaUrl()"></div>'+
-    '<button class="btn-ok" onclick="mdSavePaUrl()">URL 저장</button>'+
-    '<div class="errmsg" id="cfg-pa-err" style="margin-top:6px"></div>'+
-    '</div></div>'+
-    // ── 공지 알림 설정 (관리자 전용) ──
-    '<div class="card"><div class="ctit">&#x1F514; 공지 알림 설정</div>'+
-    '<div style="background:#f8f9ff;border-radius:10px;padding:12px 14px">'+
-      '<div style="font-size:12px;color:#555;margin-bottom:12px">공지 등록 시 기사들에게 발송되는 알림을 관리합니다.</div>'+
-      // 알림음
-      (function(){var on=getCfg().notifSound!==false;return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee">'+
-        '<div>'+
-          '<div style="font-size:14px;font-weight:700;color:#333">&#x1F50A; 알림음 (진동 포함)</div>'+
-          '<div style="font-size:11px;color:#888;margin-top:2px">공지 등록 시 수신기기 소리·진동</div>'+
-        '</div>'+
-        '<button id="notif-sound-btn" onclick="toggleNotifSetting(\'notifSound\')" style="padding:6px 18px;border-radius:20px;border:none;background:'+(on?'#1565c0':'#e0e0e0')+';color:'+(on?'#fff':'#666')+';font-size:13px;font-weight:700;cursor:pointer">'+
-          (on?'켜짐':'꺼짐')+'</button>'+
-      '</div>';})() +
-      // 푸시
-      (function(){var on=getCfg().notifPush!==false;return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">'+
-        '<div>'+
-          '<div style="font-size:14px;font-weight:700;color:#333">&#x1F4F2; Push 알림 발송</div>'+
-          '<div style="font-size:11px;color:#888;margin-top:2px">앱 꺼진 상태에서도 OS 알림으로 전송</div>'+
-        '</div>'+
-        '<button id="notif-push-btn" onclick="toggleNotifSetting(\'notifPush\')" style="padding:6px 18px;border-radius:20px;border:none;background:'+(on?'#1565c0':'#e0e0e0')+';color:'+(on?'#fff':'#666')+';font-size:13px;font-weight:700;cursor:pointer">'+
-          (on?'켜짐':'꺼짐')+'</button>'+
-      '</div>';})() +
-    '</div></div>';
-}
-function toggleNotifSetting(key){
-  var cfg=getCfg();
-  var cur=cfg[key]!==false; // undefined → true(기본 켜짐)
-  cfg[key]=!cur;
-  saveCfg(cfg);
-  // 버튼 즉시 업데이트
-  var on=!cur;
-  var btnId=key==='notifSound'?'notif-sound-btn':'notif-push-btn';
-  var btn=document.getElementById(btnId);
-  if(btn){btn.textContent=on?'켜짐':'꺼짐';btn.style.background=on?'#1565c0':'#e0e0e0';btn.style.color=on?'#fff':'#666';}
-  showToast((on?'✅':'🔕')+' '+(key==='notifSound'?'알림음':'Push 알림')+' '+(on?'활성화':'비활성화'),true);
-}
-async function mdLoadPaUrl(){
-  // called on focus — load current URL from DB
-  var el=document.getElementById('cfg-pa-url');
-  if(!el||el.dataset.loaded)return;
-  el.dataset.loaded='1';
-  var {data}=await sbClient.from('misdelivery_settings').select('pa_webhook_url').eq('id',1).single();
-  if(data&&data.pa_webhook_url)el.value=data.pa_webhook_url;
-}
-async function mdSavePaUrl(){
-  var url=(document.getElementById('cfg-pa-url').value||'').trim();
-  var errEl=document.getElementById('cfg-pa-err');
-  if(!url){errEl.textContent='URL을 입력해주세요.';return;}
-  if(!url.startsWith('http')){errEl.textContent='올바른 URL을 입력해주세요.';return;}
-  var {error}=await sbClient.from('misdelivery_settings').update({pa_webhook_url:url,updated_by:CU.name,updated_at:new Date().toISOString()}).eq('id',1);
-  if(error){errEl.textContent='저장 실패: '+error.message;return;}
-  errEl.style.color='#2e7d32';errEl.textContent='✅ 저장되었습니다.';
-  setTimeout(function(){errEl.textContent='';errEl.style.color='';},3000);
-}
-function togglePerm(type,role,checked){
-  var cfg=getCfg();
-  var key=type==='sched'?'schedPerm':'annPerm';
-  var arr=cfg[key]||[];
-  var idx=arr.indexOf(role);
-  if(checked&&idx<0)arr.push(role);
-  else if(!checked&&idx>=0)arr.splice(idx,1);
-  cfg[key]=arr;saveCfg(cfg);
-}
-function setSchedEditDays(days){
-  var cfg=getCfg();cfg.schedEditDays=days;saveCfg(cfg);
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-function setSchedMinLockDays(days){
-  var cfg=getCfg();
-  var val=(days==='week')?'week':parseInt(days)||0;
-  cfg.schedMinLockDays=val;
-  saveCfg(cfg);
-  // Supabase에 저장 → 모든 기기(팀장/조장 포함)에 즉시 반영
-  if(sbClient){
-    sbClient.from('misdelivery_settings')
-      .update({sched_lock_days:String(val),updated_by:CU?CU.name:'admin',updated_at:new Date().toISOString()})
-      .eq('id',1)
-      .then(function(r){
-        if(r&&r.error){
-          // 컬럼 없으면 SQL 안내
-          console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0\';');
-          showToast('⚠ 잠금 설정 저장 실패 — SQL 실행 필요',false);
-        }else{
-          showToast('🔒 잠금 설정이 모든 기기에 적용됩니다',true);
-        }
-      }).catch(function(e){console.warn('[setSchedLock]',e);});
-  }
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-async function saveContactsPw(){
-  var pw=document.getElementById('cfg-cpw').value.trim();
-  var cfg=getCfg();cfg.contactsPw=pw;saveCfg(cfg);
-  _contactsUnlocked=false;
-  alert(pw?'연락처 비밀번호가 설정되었습니다.':'연락처 비밀번호가 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-function clearContactsPw(){
-  var cfg=getCfg();cfg.contactsPw='';saveCfg(cfg);
-  _contactsUnlocked=false;
-  alert('연락처 잠금이 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-
-// ── 오배송 키워드 관리 ────────────────────────────────────────────────
-function mdAddKeyword(){
-  var inp=document.getElementById('kw-input');
-  var errEl=document.getElementById('kw-err');
-  if(!inp||!errEl)return;
-  var kw=inp.value.trim();
-  if(!kw){errEl.textContent='키워드를 입력해주세요.';return;}
-  if(_mdKeywords.indexOf(kw)>=0){errEl.textContent='이미 등록된 키워드입니다.';return;}
-  errEl.textContent='';
-  _mdKeywords.push(kw);
-  inp.value='';
-  mdSaveKeywords();
-}
-function mdDeleteKeyword(idx){
-  if(!confirm('키워드를 삭제할까요?'))return;
-  _mdKeywords.splice(idx,1);
-  mdSaveKeywords();
-}
-async function mdSaveKeywords(){
-  // UI 갱신
-  var kwList=document.getElementById('kw-list');
-  if(kwList){
-    kwList.innerHTML=_mdKeywords.length===0
-      ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">등록된 키워드 없음</div>'
-      : _mdKeywords.map(function(kw,i){
-          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'+
-            '<span style="flex:1;font-size:13px;font-weight:600;color:#1a237e;background:#f0f4ff;padding:4px 10px;border-radius:20px">'+mdEsc(kw)+'</span>'+
-            '<button onclick="mdDeleteKeyword('+i+')" style="padding:4px 10px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:12px;cursor:pointer">삭제</button>'+
-          '</div>';
-        }).join('');
-  }
-  // Supabase 저장
-  if(!sbClient){showToast('Supabase 미연결',false);return;}
-  try{
-    var {error}=await sbClient.from('misdelivery_settings')
-      .update({keywords:JSON.stringify(_mdKeywords),updated_by:CU?CU.name:'admin',updated_at:new Date().toISOString()})
-      .eq('id',1);
-    if(error){
-      console.warn('[Keywords] Supabase 저장 실패:',error.message);
-      showToast('⚠ 저장 실패: SQL 컬럼 추가 필요',false);
-    }else{
-      showToast('✅ 키워드 저장 완료',true);
-    }
-  }catch(e){console.warn('[Keywords]',e);showToast('저장 오류',false);}
-}
-
-async function saveAdminCreds(){
-  var aid=document.getElementById('cfg-aid').value.trim();
-  var apw1=document.getElementById('cfg-apw1').value;
-  var apw2=document.getElementById('cfg-apw2').value;
-  var errEl=document.getElementById('cfg-err');
-  errEl.textContent='';
-  if(!aid){errEl.textContent='아이디를 입력해주세요.';return;}
-  if(apw1.length<4){errEl.textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
-  if(apw1!==apw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
-  // 1. localStorage 저장
-  var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
-  // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
-  if(sbClient){
-    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
-    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
-    var {error:sbErr}=await sbClient.from('misdelivery_settings')
-      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
-      .eq('id',1);
-    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
-    if(sbErr){
-      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
-      errEl.style.color='#e65100';
-      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
-      // localStorage는 저장됐으므로 현재 기기에선 적용됨
-      setTimeout(function(){
-        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
-        doLogout();
-      },300);
-      return;
-    }
-  }
-  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n다시 로그인해주세요.');
-  doLogout();
-}
-async function resetAdminCreds(){
-  if(!confirm('관리자 계정을 기본값으로 초기화할까요?\n초기화 후 기본 아이디/비밀번호로 로그인해야 합니다.'))return;
-  var cfg=getCfg();
-  delete cfg.adminId;delete cfg.adminPw;saveCfg(cfg);
-  if(sbClient){
-    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(function(){});
-  }
-  alert('관리자 계정이 초기화됐습니다. 기본 계정으로 로그인해주세요.');
-  doLogout();
-}
-
-</script>
-</body></html>
