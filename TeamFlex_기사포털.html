@@ -15,6 +15,61 @@
 <link rel="manifest" href="/manifest.json">
 <title>[TEST] TeamFlex 기사 포털</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+// ── MSAL Microsoft 인증 (Teams 이미지 로드용) ──────────────────────────
+var MSAL_CLIENT_ID='e3428c2f-8025-4a24-9bec-bee6d720b164';
+var MSAL_TENANT_ID='15bfc304-d02b-45f6-97b6-552bd1002b1e';
+var msalApp=null;
+var _msGraphToken=null;
+var _msGraphScopes=['https://graph.microsoft.com/Chat.Read','https://graph.microsoft.com/Chat.ReadWrite'];
+
+(function(){
+  function initMsal(){
+    if(typeof msal==='undefined'){setTimeout(initMsal,600);return;}
+    try{
+      msalApp=new msal.PublicClientApplication({
+        auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+MSAL_TENANT_ID,redirectUri:window.location.origin+window.location.pathname},
+        cache:{cacheLocation:'sessionStorage',storeAuthStateInCookie:false}
+      });
+      msalApp.handleRedirectPromise().then(function(resp){
+        if(resp&&resp.accessToken){_msGraphToken=resp.accessToken;}
+        var accts=msalApp.getAllAccounts();
+        var silentReq=accts.length>0?msalApp.acquireTokenSilent({scopes:_msGraphScopes,account:accts[0]}):msalApp.ssoSilent({scopes:_msGraphScopes});
+        silentReq.then(function(r){_msGraphToken=r.accessToken;console.log('[MSAL] 토큰 획득 성공');}).catch(function(){console.info('[MSAL] MS 로그인 없음');});
+      }).catch(function(e){console.warn('[MSAL]',e);});
+    }catch(e){console.warn('[MSAL] 초기화:',e);}
+  }
+  window.addEventListener('load',initMsal);
+})();
+
+async function getMsGraphToken(){
+  if(_msGraphToken)return _msGraphToken;
+  if(!msalApp)return null;
+  try{
+    var accts=msalApp.getAllAccounts();
+    var r=accts.length>0?await msalApp.acquireTokenSilent({scopes:_msGraphScopes,account:accts[0]}):await msalApp.ssoSilent({scopes:_msGraphScopes});
+    _msGraphToken=r.accessToken;return _msGraphToken;
+  }catch(e){return null;}
+}
+
+async function loadGraphImage(uid,url,fallbackHtml){
+  var el=document.getElementById(uid);
+  if(!el)return;
+  var token=await getMsGraphToken();
+  if(!token){el.outerHTML=fallbackHtml;return;}
+  try{
+    var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+    if(!resp.ok)throw new Error(resp.status);
+    var blob=await resp.blob();
+    var blobUrl=URL.createObjectURL(blob);
+    el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(\''+blobUrl+'\')">';
+  }catch(e){
+    var elem=document.getElementById(uid);
+    if(elem)elem.outerHTML=fallbackHtml;
+  }
+}
+</script>
 <script>
 // SheetJS 로드 (다중 CDN 폴백)
 (function(){
@@ -238,7 +293,8 @@ textarea.ann-input:focus{border-color:#1565c0}
 .md-photos::-webkit-scrollbar{display:none}
 .md-photo{width:80px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer;border:2px solid transparent;transition:border-color .15s}
 .md-photo:hover{border-color:#1565c0}
-.md-photo-placeholder{width:80px;height:60px;border-radius:8px;background:#e8eaf6;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.md-photo-placeholder{width:80px;height:60px;border-radius:8px;background:#e8eaf6;display:inline-flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;cursor:pointer}
+.md-teams-ph{text-decoration:none;border:2px solid #c5cae9}
 .md-content{background:#fffde7;margin:0 12px 8px;border-radius:8px;padding:8px 10px;font-size:11px;color:#795548;line-height:1.6;border-left:3px solid #fbc02d}
 .md-reply-sec{padding:8px 14px 12px}
 .md-ta{width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:12px;resize:none;outline:none;font-family:inherit;min-height:56px;color:#333}
@@ -4215,16 +4271,45 @@ function mdCardHtml(c,isAdmin,isLeader){
 
   var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(c.driver_name||c.driver_id)+'</span>':'';
 
-  // 사진
+  // 사진 (Supabase URL + Teams 인라인 이미지)
   var photos='';
   var imgs=c.image_urls||(c.image_urls===null?[]:c.image_urls)||[];
   if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
+  // raw_message HTML에서 Teams 인라인 이미지 URL 추출
+  var inlineImgUrls=[];
+  var rawHtml=c.raw_message||'';
+  var imgTagRe=/<img[^>]+src=["']([^"']+)["']/gi;
+  var mImg;
+  while((mImg=imgTagRe.exec(rawHtml))!==null){
+    if(mImg[1]&&!inlineImgUrls.includes(mImg[1]))inlineImgUrls.push(mImg[1]);
+  }
+  var allImgSources=[];
   if(imgs&&imgs.length>0){
-    photos='<div class="md-photos">'+
-      imgs.map(function(url,idx){
-        return '<img class="md-photo" src="'+mdEsc(url)+'" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
-      }).join('')+
-    '</div>';
+    imgs.forEach(function(item){
+      if(typeof item==='string')allImgSources.push({type:'url',url:item});
+      else if(item&&item.contentUrl)allImgSources.push({type:'sp',url:item.contentUrl,name:item.name||'사진'});
+    });
+  }
+  inlineImgUrls.forEach(function(u){allImgSources.push({type:'graph',url:u});});
+  if(allImgSources.length>0){
+    var msgId=c.teams_message_id||'';
+    var chatId=c.teams_channel_id||'';
+    var teamsUrl=chatId&&msgId?'https://teams.microsoft.com/l/message/'+encodeURIComponent(chatId)+'/'+encodeURIComponent(msgId):'';
+    photos='<div class="md-photos">';
+    allImgSources.forEach(function(src){
+      var uid='img-'+c.id+'-'+Math.random().toString(36).slice(2,7);
+      if(src.type==='url'){
+        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(\''+mdEsc(src.url)+'\')" onerror="this.style.display=\'none\'">';
+      } else if(src.type==='sp'){
+        var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
+        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(\''+mdEsc(src.url)+'\')" onerror="document.getElementById(\''+uid+'\').innerHTML=\''+fb.replace(/'/g,"\\'")+'\'"></span>';
+      } else if(src.type==='graph'){
+        var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
+        photos+='<span id="'+uid+'" class="md-photo-placeholder" style="font-size:18px">⏳</span>';
+        (function(u2,i2,fb2){setTimeout(function(){loadGraphImage(i2,u2,fb2);},80);})(src.url,uid,fb);
+      }
+    });
+    photos+='</div>';
   }
 
   // 답변 섹션은 모달에서 처리
@@ -7013,93 +7098,4 @@ function clearContactsPw(){
 // ── 오배송 키워드 관리 ────────────────────────────────────────────────
 function mdAddKeyword(){
   var inp=document.getElementById('kw-input');
-  var errEl=document.getElementById('kw-err');
-  if(!inp||!errEl)return;
-  var kw=inp.value.trim();
-  if(!kw){errEl.textContent='키워드를 입력해주세요.';return;}
-  if(_mdKeywords.indexOf(kw)>=0){errEl.textContent='이미 등록된 키워드입니다.';return;}
-  errEl.textContent='';
-  _mdKeywords.push(kw);
-  inp.value='';
-  mdSaveKeywords();
-}
-function mdDeleteKeyword(idx){
-  if(!confirm('키워드를 삭제할까요?'))return;
-  _mdKeywords.splice(idx,1);
-  mdSaveKeywords();
-}
-async function mdSaveKeywords(){
-  // UI 갱신
-  var kwList=document.getElementById('kw-list');
-  if(kwList){
-    kwList.innerHTML=_mdKeywords.length===0
-      ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">등록된 키워드 없음</div>'
-      : _mdKeywords.map(function(kw,i){
-          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'+
-            '<span style="flex:1;font-size:13px;font-weight:600;color:#1a237e;background:#f0f4ff;padding:4px 10px;border-radius:20px">'+mdEsc(kw)+'</span>'+
-            '<button onclick="mdDeleteKeyword('+i+')" style="padding:4px 10px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:12px;cursor:pointer">삭제</button>'+
-          '</div>';
-        }).join('');
-  }
-  // Supabase 저장
-  if(!sbClient){showToast('Supabase 미연결',false);return;}
-  try{
-    var {error}=await sbClient.from('misdelivery_settings')
-      .update({keywords:JSON.stringify(_mdKeywords),updated_by:CU?CU.name:'admin',updated_at:new Date().toISOString()})
-      .eq('id',1);
-    if(error){
-      console.warn('[Keywords] Supabase 저장 실패:',error.message);
-      showToast('⚠ 저장 실패: SQL 컬럼 추가 필요',false);
-    }else{
-      showToast('✅ 키워드 저장 완료',true);
-    }
-  }catch(e){console.warn('[Keywords]',e);showToast('저장 오류',false);}
-}
-
-async function saveAdminCreds(){
-  var aid=document.getElementById('cfg-aid').value.trim();
-  var apw1=document.getElementById('cfg-apw1').value;
-  var apw2=document.getElementById('cfg-apw2').value;
-  var errEl=document.getElementById('cfg-err');
-  errEl.textContent='';
-  if(!aid){errEl.textContent='아이디를 입력해주세요.';return;}
-  if(apw1.length<4){errEl.textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
-  if(apw1!==apw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
-  // 1. localStorage 저장
-  var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
-  // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
-  if(sbClient){
-    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
-    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
-    var {error:sbErr}=await sbClient.from('misdelivery_settings')
-      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
-      .eq('id',1);
-    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
-    if(sbErr){
-      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
-      errEl.style.color='#e65100';
-      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
-      // localStorage는 저장됐으므로 현재 기기에선 적용됨
-      setTimeout(function(){
-        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
-        doLogout();
-      },300);
-      return;
-    }
-  }
-  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n다시 로그인해주세요.');
-  doLogout();
-}
-async function resetAdminCreds(){
-  if(!confirm('관리자 계정을 기본값으로 초기화할까요?\n초기화 후 기본 아이디/비밀번호로 로그인해야 합니다.'))return;
-  var cfg=getCfg();
-  delete cfg.adminId;delete cfg.adminPw;saveCfg(cfg);
-  if(sbClient){
-    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(function(){});
-  }
-  alert('관리자 계정이 초기화됐습니다. 기본 계정으로 로그인해주세요.');
-  doLogout();
-}
-
-</script>
-</body></html>
+  var errEl=document.getElementById('
