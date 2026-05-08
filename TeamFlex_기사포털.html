@@ -53,20 +53,40 @@ async function getMsGraphToken(){
   }catch(e){return null;}
 }
 
+async function msLoginAndLoadImages(){
+  if(!msalApp)return;
+  try{
+    var r=await msalApp.loginPopup({scopes:_msGraphScopes});
+    _msGraphToken=r.accessToken;
+    // 로그인 후 대기 중인 이미지들 다시 로드
+    document.querySelectorAll('.md-ms-login-btn').forEach(function(btn){
+      var uid=btn.getAttribute('data-uid');
+      var imgUrl=btn.getAttribute('data-url');
+      var fb=btn.getAttribute('data-fb');
+      if(uid&&imgUrl)loadGraphImage(uid,imgUrl,fb||'');
+    });
+  }catch(e){console.warn('[MSAL] 로그인 취소:',e);}
+}
+
 async function loadGraphImage(uid,url,fallbackHtml){
   var el=document.getElementById(uid);
   if(!el)return;
   var token=await getMsGraphToken();
-  if(!token){el.outerHTML=fallbackHtml;return;}
+  if(!token){
+    // 로그인 버튼 포함 폴백
+    var loginBtn='<button class="md-ms-login-btn" data-uid="'+uid+'" data-url="'+url+'" data-fb="'+encodeURIComponent(fallbackHtml||'')+'" onclick="this.disabled=true;msLoginAndLoadImages()" style="width:80px;height:60px;border-radius:8px;background:#e8f0fe;border:1.5px solid #4285f4;font-size:10px;color:#1565c0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;flex-shrink:0"><span style="font-size:18px">🔐</span><span>MS 로그인</span></button>';
+    el.outerHTML=loginBtn;
+    return;
+  }
   try{
     var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
-    if(!resp.ok)throw new Error(resp.status);
+    if(!resp.ok){if(resp.status===401){_msGraphToken=null;}throw new Error(resp.status);}
     var blob=await resp.blob();
     var blobUrl=URL.createObjectURL(blob);
     el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(\''+blobUrl+'\')">';
   }catch(e){
     var elem=document.getElementById(uid);
-    if(elem)elem.outerHTML=fallbackHtml;
+    if(elem)elem.outerHTML=fallbackHtml||'';
   }
 }
 </script>
@@ -7073,29 +7093,4 @@ function setSchedMinLockDays(days){
         if(r&&r.error){
           // 컬럼 없으면 SQL 안내
           console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0\';');
-          showToast('⚠ 잠금 설정 저장 실패 — SQL 실행 필요',false);
-        }else{
-          showToast('🔒 잠금 설정이 모든 기기에 적용됩니다',true);
-        }
-      }).catch(function(e){console.warn('[setSchedLock]',e);});
-  }
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-async function saveContactsPw(){
-  var pw=document.getElementById('cfg-cpw').value.trim();
-  var cfg=getCfg();cfg.contactsPw=pw;saveCfg(cfg);
-  _contactsUnlocked=false;
-  alert(pw?'연락처 비밀번호가 설정되었습니다.':'연락처 비밀번호가 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-function clearContactsPw(){
-  var cfg=getCfg();cfg.contactsPw='';saveCfg(cfg);
-  _contactsUnlocked=false;
-  alert('연락처 잠금이 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings();
-}
-
-// ── 오배송 키워드 관리 ────────────────────────────────────────────────
-function mdAddKeyword(){
-  var inp=document.getElementById('kw-input');
-  var errEl=document.getElementById('
+          
