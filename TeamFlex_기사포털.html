@@ -4227,22 +4227,8 @@ function mdCardHtml(c,isAdmin,isLeader){
     '</div>';
   }
 
-  // 답변 섹션
+  // 답변 섹션은 모달에서 처리
   var replySec='';
-  if(c.status==='pending'){
-    // 기사: 답변 입력창
-    if(!isAdmin&&!isLeader){
-      replySec='<div class="md-reply-sec">'+
-        '<textarea class="md-ta" id="md-ta-'+c.id+'" placeholder="처리 내용을 입력하세요..."></textarea>'+
-        '<button class="md-send-btn" onclick="mdSendReply('+c.id+')">💬 답변 전송</button>'+
-      '</div>';
-    }
-  } else if(c.status==='replied'){
-    // 답변 내용 보여주기 + 팀장/관리자는 승인 버튼
-    replySec='<div id="md-reply-box-'+c.id+'">'+mdReplyBox(c,isAdmin,isLeader)+'</div>';
-  } else if(c.status==='approved'){
-    replySec='<div id="md-reply-box-'+c.id+'">'+mdReplyBox(c,isAdmin,isLeader)+'</div>';
-  }
 
   return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'">'+
     '<div onclick="mdOpenDetail('+c.id+')" style="cursor:pointer">'+
@@ -4268,6 +4254,11 @@ function mdCardHtml(c,isAdmin,isLeader){
 function mdOpenDetail(caseId){
   var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
   if(!c)return;
+  var isAdmin=(CU&&CU.role==='admin');
+  var isLeader=(CU&&(CU.role==='leader'||CU.role==='sub'));
+  var isDriver=(CU&&!isAdmin&&!isLeader);
+
+  // 사진
   var imgs=c.image_urls||[];
   if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
   var photoHtml='';
@@ -4278,30 +4269,108 @@ function mdOpenDetail(caseId){
       }).join('')+
     '</div>';
   }
+
+  // 전체 메시지
   var rawMsg=c.raw_message||c.issue_content||'';
   var msgHtml=rawMsg
-    ? '<div style="background:#fffde7;border-radius:10px;padding:12px 14px;font-size:12px;color:#5d4037;line-height:1.8;border-left:3px solid #fbc02d;white-space:pre-wrap;word-break:break-all;margin-bottom:10px">'+mdEsc(rawMsg)+'</div>'
+    ? '<div style="background:#fffde7;border-radius:10px;padding:12px 14px;font-size:12px;color:#5d4037;line-height:1.8;border-left:3px solid #fbc02d;white-space:pre-wrap;word-break:break-all;margin-bottom:14px">'+mdEsc(rawMsg)+'</div>'
     : '';
-  var borderCls={pending:'c-red',replied:'c-blue',approved:'c-green'}[c.status]||'c-red';
+
   var badgeCls={pending:'mb-red',replied:'mb-blue',approved:'mb-green'}[c.status]||'mb-red';
   var badgeTxt={pending:'🔴 미답변',replied:'🔵 답변완료',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
+
+  // 답변 섹션
+  var replyHtml='';
+  if(c.status==='pending'&&isDriver){
+    replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
+      '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">💬 처리 내용 입력</div>'+
+      '<textarea id="md-ta-'+c.id+'" class="md-ta" placeholder="처리 내용을 입력하세요..." style="width:100%;min-height:80px;box-sizing:border-box"></textarea>'+
+      '<button class="md-send-btn" style="width:100%;margin-top:8px" onclick="mdSendReplyFromModal('+c.id+')">💬 답변 전송</button>'+
+    '</div>';
+  } else if((c.status==='replied'||c.status==='approved')||(isAdmin||isLeader)){
+    replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
+      '<div id="md-modal-reply-'+c.id+'"><div style="font-size:11px;color:#aaa;padding:8px 0">답변 로딩 중...</div></div>'+
+    '</div>';
+  }
+
   var el=document.getElementById('md-detail-modal');
   if(!el){el=document.createElement('div');el.id='md-detail-modal';document.body.appendChild(el);}
-  el.innerHTML='<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)document.getElementById(\'md-detail-modal\').style.display=\'none\'">'+
-    '<div style="background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">'+
+  el.innerHTML='<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:24px;box-sizing:border-box;overflow-y:auto" onclick="if(event.target===this)document.getElementById(\'md-detail-modal\').style.display=\'none\'">'+
+    '<div style="background:#fff;border-radius:20px;padding:20px 16px 28px;width:calc(100% - 32px);max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin-bottom:24px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
         '<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>'+
-        '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\'" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa">✕</button>'+
+        '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\'" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1">✕</button>'+
       '</div>'+
-      '<div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:10px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
-      '<div style="font-size:12px;color:#888;margin-bottom:4px">기사: <b>'+mdEsc(c.driver_name||c.driver_id||'-')+'</b></div>'+
-      '<div style="font-size:12px;color:#888;margin-bottom:4px">운송장: <b>'+mdEsc(c.waybill_no||'-')+'</b></div>'+
-      '<div style="font-size:12px;color:#888;margin-bottom:12px">주소: '+mdEsc(c.address||'-')+'</div>'+
+      '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:10px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
+      '<div style="background:#f8f9ff;border-radius:10px;padding:10px 12px;margin-bottom:12px">'+
+        '<div style="font-size:12px;color:#666;margin-bottom:3px">👷 기사: <b style="color:#1a237e">'+mdEsc(c.driver_name||c.driver_id||'-')+'</b></div>'+
+        '<div style="font-size:12px;color:#666;margin-bottom:3px">📦 운송장: <b>'+mdEsc(c.waybill_no||'-')+'</b></div>'+
+        '<div style="font-size:12px;color:#666">📍 주소: '+mdEsc(c.address||'-')+'</div>'+
+      '</div>'+
       photoHtml+
       msgHtml+
+      replyHtml+
     '</div>'+
   '</div>';
   el.style.display='block';
+
+  // 답변 비동기 로드 (replied/approved 상태일 때)
+  if((c.status==='replied'||c.status==='approved')||(isAdmin||isLeader)){
+    mdLoadModalReply(c.id,isAdmin,isLeader);
+  }
+}
+
+// 모달 내 답변 전송
+async function mdSendReplyFromModal(caseId){
+  await mdSendReply(caseId);
+  // 성공 후 모달 내용 갱신
+  var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
+  if(c){
+    var el=document.getElementById('md-detail-modal');
+    if(el&&el.style.display!=='none'){ mdOpenDetail(caseId); }
+  }
+}
+
+// 모달 내 답변 로드
+async function mdLoadModalReply(caseId,isAdmin,isLeader){
+  if(!sbClient)return;
+  var {data:replies}=await sbClient.from('misdelivery_replies')
+    .select('*').eq('case_id',caseId).order('created_at',{ascending:false}).limit(1);
+  var el=document.getElementById('md-modal-reply-'+caseId);
+  if(!el)return;
+  if(!replies||replies.length===0){
+    if(isDriver_||CU&&!isAdmin&&!isLeader){
+      el.innerHTML='';
+    } else {
+      el.innerHTML='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">아직 기사 답변이 없습니다.</div>';
+    }
+    return;
+  }
+  var r=replies[0];
+  var caseData=_mdCases.find(function(c){return c.id===caseId;});
+  var caseStatus=caseData?caseData.status:'replied';
+
+  if((isAdmin||isLeader)&&r.approval_status==='pending'&&caseStatus==='replied'){
+    el.innerHTML='<div class="md-appr-box">'+
+      '<div class="md-appr-title">📋 기사 답변 — 승인 후 Teams 게시</div>'+
+      '<div class="md-appr-text">'+mdEsc(r.reply_text)+'</div>'+
+      '<div class="md-appr-btns">'+
+        '<button class="md-appr-ok" onclick="mdApproveReplyModal('+r.id+','+caseId+')">✅ 승인 → Teams 게시</button>'+
+        '<button class="md-appr-no" onclick="mdRejectReply('+r.id+','+caseId+')">↩ 재답변 요청</button>'+
+      '</div>'+
+    '</div>';
+  } else {
+    var modeText=r.posted_to_teams?'Teams 게시 완료 ✅':r.approval_status==='pending'?'팀장 승인 대기 ⏳':'처리됨';
+    el.innerHTML='<div class="md-replied">'+mdEsc(r.reply_text)+'<div class="md-replied-meta">'+mdEsc(r.replied_by)+' · '+modeText+'</div></div>';
+  }
+}
+
+// 모달 내 승인
+async function mdApproveReplyModal(replyId,caseId){
+  await mdApproveReply(replyId,caseId);
+  // 모달 갱신
+  var el=document.getElementById('md-detail-modal');
+  if(el&&el.style.display!=='none'){ mdOpenDetail(caseId); }
 }
 
 // ── 답변 박스 HTML ────────────────────────────────────────────────────
