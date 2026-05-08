@@ -4315,10 +4315,10 @@ function mdCardHtml(c,isAdmin,isLeader){
     allImgSources.forEach(function(src){
       var uid='img-'+c.id+'-'+Math.random().toString(36).slice(2,7);
       if(src.type==='url'){
-        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="this.style.display='none'">';
+        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="this.style.display=\'none\'">';
       } else if(src.type==='sp'){
         var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
-        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="document.getElementById(''+uid+'').innerHTML=''+fb.replace(/'/g,"\'")+''">'+'</span>';
+        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="this.parentNode.innerHTML=this.dataset.fb" data-fb="'+mdEsc(fb)+'"></span>';
       } else if(src.type==='graph'){
         var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
         photos+='<span id="'+uid+'" class="md-photo-placeholder" style="font-size:18px">⏳</span>';
