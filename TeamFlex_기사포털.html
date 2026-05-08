@@ -80,7 +80,7 @@ async function loadGraphImage(uid,url,fallbackHtml){
     if(!resp.ok){if(resp.status===401)_msGraphToken=null;throw new Error(resp.status);}
     var blob=await resp.blob();
     var blobUrl=URL.createObjectURL(blob);
-    el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(''+blobUrl+'')">';
+    el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(this.src)">';
   }catch(e){
     var elem=document.getElementById(uid);
     if(elem)elem.outerHTML=fallbackHtml||'';
@@ -4315,10 +4315,10 @@ function mdCardHtml(c,isAdmin,isLeader){
     allImgSources.forEach(function(src){
       var uid='img-'+c.id+'-'+Math.random().toString(36).slice(2,7);
       if(src.type==='url'){
-        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(''+mdEsc(src.url)+'')" onerror="this.style.display='none'">';
+        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="this.style.display='none'">';
       } else if(src.type==='sp'){
         var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
-        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(''+mdEsc(src.url)+'')" onerror="document.getElementById(''+uid+'').innerHTML=''+fb.replace(/'/g,"\'")+''">'+'</span>';
+        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(this.src)" onerror="document.getElementById(''+uid+'').innerHTML=''+fb.replace(/'/g,"\'")+''">'+'</span>';
       } else if(src.type==='graph'){
         var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
         photos+='<span id="'+uid+'" class="md-photo-placeholder" style="font-size:18px">⏳</span>';
@@ -4378,7 +4378,7 @@ function mdOpenDetail(caseId){
   if(imgs&&imgs.length>0){
     photoHtml='<div style="margin-bottom:14px">'+
       imgs.map(function(url){
-        return '<img src="'+mdEsc(url)+'" style="width:100%;border-radius:10px;object-fit:cover;margin-bottom:6px;cursor:pointer" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
+        return '<img src="'+mdEsc(url)+'" style="width:100%;border-radius:10px;object-fit:cover;margin-bottom:6px;cursor:pointer" onclick="mdViewPhoto(this.src)" onerror="this.style.display=\'none\'">';
       }).join('')+
     '</div>';
   }
