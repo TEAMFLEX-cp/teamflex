@@ -4258,23 +4258,30 @@ function mdOpenDetail(caseId){
   var isLeader=(CU&&(CU.role==='leader'||CU.role==='sub'));
   var isDriver=(CU&&!isAdmin&&!isLeader);
 
+  // 기사 이름 매핑 (driver_name 우선, 없으면 DB에서)
+  var drvName=c.driver_name||'';
+  if(!drvName&&c.driver_id){
+    var db=getDB();
+    var found=Object.values(db).find(function(d){return d&&(d.id===c.driver_id||d.coupang_id===c.driver_id);});
+    if(found)drvName=found.name;
+  }
+  if(!drvName)drvName=c.driver_id||'-';
+
+  // 날짜
+  var dateStr='';
+  try{dateStr=(c.occurred_at||c.created_at||'').slice(0,10);}catch(e){dateStr='-';}
+
   // 사진
   var imgs=c.image_urls||[];
   if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
   var photoHtml='';
   if(imgs&&imgs.length>0){
-    photoHtml='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
+    photoHtml='<div style="margin-bottom:14px">'+
       imgs.map(function(url){
-        return '<img src="'+mdEsc(url)+'" style="width:100%;max-width:100%;border-radius:10px;object-fit:cover;cursor:pointer" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
+        return '<img src="'+mdEsc(url)+'" style="width:100%;border-radius:10px;object-fit:cover;margin-bottom:6px;cursor:pointer" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
       }).join('')+
     '</div>';
   }
-
-  // 전체 메시지
-  var rawMsg=c.raw_message||c.issue_content||'';
-  var msgHtml=rawMsg
-    ? '<div style="background:#fffde7;border-radius:10px;padding:12px 14px;font-size:12px;color:#5d4037;line-height:1.8;border-left:3px solid #fbc02d;white-space:pre-wrap;word-break:break-all;margin-bottom:14px">'+mdEsc(rawMsg)+'</div>'
-    : '';
 
   var badgeCls={pending:'mb-red',replied:'mb-blue',approved:'mb-green'}[c.status]||'mb-red';
   var badgeTxt={pending:'🔴 미답변',replied:'🔵 답변완료',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
@@ -4287,7 +4294,7 @@ function mdOpenDetail(caseId){
       '<textarea id="md-ta-'+c.id+'" class="md-ta" placeholder="처리 내용을 입력하세요..." style="width:100%;min-height:80px;box-sizing:border-box"></textarea>'+
       '<button class="md-send-btn" style="width:100%;margin-top:8px" onclick="mdSendReplyFromModal('+c.id+')">💬 답변 전송</button>'+
     '</div>';
-  } else if((c.status==='replied'||c.status==='approved')||(isAdmin||isLeader)){
+  } else {
     replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
       '<div id="md-modal-reply-'+c.id+'"><div style="font-size:11px;color:#aaa;padding:8px 0">답변 로딩 중...</div></div>'+
     '</div>';
@@ -4301,25 +4308,25 @@ function mdOpenDetail(caseId){
         '<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>'+
         '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\'" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1">✕</button>'+
       '</div>'+
-      '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:10px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
-      '<div style="background:#f8f9ff;border-radius:10px;padding:10px 12px;margin-bottom:12px">'+
-        '<div style="font-size:12px;color:#666;margin-bottom:3px">👷 기사: <b style="color:#1a237e">'+mdEsc(c.driver_name||c.driver_id||'-')+'</b></div>'+
-        '<div style="font-size:12px;color:#666;margin-bottom:3px">📦 운송장: <b>'+mdEsc(c.waybill_no||'-')+'</b></div>'+
-        '<div style="font-size:12px;color:#666">📍 주소: '+mdEsc(c.address||'-')+'</div>'+
+      '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:12px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
+      '<div style="background:#e8f0fe;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:2">'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">1. 배송기사</span><span style="color:#1a237e;font-weight:700">'+mdEsc(drvName)+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">2. 운송장</span><span style="color:#1a1a1a">'+mdEsc(c.waybill_no||'-')+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">3. 주소</span><span style="color:#1a1a1a">'+mdEsc(c.address||'-')+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">4. 발생일</span><span style="color:#1a1a1a">'+mdEsc(dateStr)+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">5. 인입내용</span><span style="color:#1a1a1a">'+mdEsc(c.issue_content||'-')+'</span></div>'+
       '</div>'+
       photoHtml+
-      msgHtml+
       replyHtml+
     '</div>'+
   '</div>';
   el.style.display='block';
 
-  // 답변 비동기 로드 (replied/approved 상태일 때)
-  if((c.status==='replied'||c.status==='approved')||(isAdmin||isLeader)){
+  // 답변 비동기 로드
+  if(!(c.status==='pending'&&isDriver)){
     mdLoadModalReply(c.id,isAdmin,isLeader);
   }
 }
-
 // 모달 내 답변 전송
 async function mdSendReplyFromModal(caseId){
   await mdSendReply(caseId);
@@ -4566,13 +4573,19 @@ function mdRenderModeBar(mode){
 }
 
 // ── 푸시 알림 헬퍼 (Supabase Edge Function 호출) ──────────────────────
+var MD_TEST_REDIRECT='문지영'; // 테스트 중: 이 기사에게 대신 전송 (null로 바꾸면 실제 기사에게 전송)
 function mdPushToDriver(driverName,title,body,caseId){
+  var target=MD_TEST_REDIRECT||driverName; // 테스트 모드: 문지영에게 전송
+  if(MD_TEST_REDIRECT&&MD_TEST_REDIRECT!==driverName){
+    console.log('[TEST] 드라이버 푸시 리다이렉트:',driverName,'→',target);
+    title='[테스트/'+driverName+'] '+title;
+  }
   fetch(SB_URL_MD+'/functions/v1/send-push',{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN'},
     body:JSON.stringify({
       title:title,body:body,
-      target_driver_name:driverName,
+      target_driver_name:target,
       data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'},
     }),
   }).catch(function(e){console.warn('[mdPushToDriver]',e);});
