@@ -866,7 +866,10 @@ async function syncFromSupabase(){
         else if(_localStatus==='approved'&&sbClient){
           (function(n,s){sbClient.from('drivers').update({status:s,synced_at:new Date().toISOString()}).eq('name',n).then(function(){}).catch(function(e){console.warn('[Sync fix]',e);});})(d.name,_localStatus);
         }
-        db[d.name].password=d.password||'1234';
+        // ✅ 비밀번호 다운그레이드 방지: 로컬에 실제 비밀번호 있으면 Supabase의 1234로 덮어쓰지 않음
+        var _sbPw=d.password||'1234';
+        var _lcPw=db[d.name].password||'1234';
+        if(_sbPw!=='1234'||_lcPw==='1234'){db[d.name].password=_sbPw;}
         if(d.phone!=null&&d.phone!=='')db[d.name].phone=d.phone; // 빈값으로 덮어쓰기 방지
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
@@ -2597,7 +2600,16 @@ function tryAutoLogin(){
             if(_db[s.name]){
               var changed=false;
               if(sr.data.role&&_db[s.name].role!==sr.data.role){_db[s.name].role=sr.data.role;changed=true;}
-              if(sr.data.status)_db[s.name].status=sr.data.status;
+              // ✅ 상태 다운그레이드 방지: approved → inactive/pending 으로 절대 덮어쓰지 않음
+              var _spAL={inactive:0,pending:1,approved:2,blocked:3,kicked:3};
+              var _sbSt=sr.data.status||'inactive';
+              var _lcSt=_db[s.name].status||'inactive';
+              if((_spAL[_sbSt]||0)>(_spAL[_lcSt]||0)){
+                _db[s.name].status=_sbSt;changed=true;
+              } else if(_lcSt==='approved'&&(_spAL[_sbSt]||0)<2){
+                // 로컬이 approved인데 Supabase가 낮으면 → Supabase를 approved로 복원
+                sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',s.name).catch(function(){});
+              }
               if(changed){saveDB(_db);if(CU&&CU.name===s.name)CU.role=sr.data.role;}
             }
           }
@@ -7108,18 +7120,4 @@ function pgSettings(){
     '<div class="perm-checks">'+schedChecks+'</div></div>'+
     '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:10px">&#x23F1; 팀장·조장 수정 가능 기간</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    [30,60,90,365].map(function(d){var sel=(cfg.schedEditDays||90)===d;var lbl=d>=365?'1년':(d+'일');return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?'#1565c0':'#e0e0e0')+';background:'+(sel?'#e3f2fd':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?'#1565c0':'#555')+'"><input type="radio" name="schedDays" value="'+d+'" '+(sel?'checked':'')+' onchange="setSchedEditDays('+d+')" style="accent-color:#1565c0">'+lbl+'</label>';}).join('')+
-    '</div></div>'+
-    '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:8px">🔒 과거 수정 잠금 — 며칠 이전 수정 불가 (0 = 제한없음)</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    (function(){
-      var opts=[
-        {v:0,lbl:'제한없음'},
-        {v:2,lbl:'2일 이전 잠금'},
-        {v:3,lbl:'3일 이전 잠금'},
-        {v:4,lbl:'4일 이전 잠금'},
-        {v:5,lbl:'5일 이전 잠금'},
-        {v:'week',lbl:'🔒 해당주차 금지'}
-      ];
-      var cur=cfg.schedMinLockDays;if(cur===undefined||cur===null)cur=0;
-      return opts.map(function(o){
+    [30,60,90,365].map(function(d){var sel=(cfg.schedEditDays||90)===d;var lbl=d>=365?'1년':(d+'일');return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?'#1565c0':'#e0e0e0')+';background:'+(sel?'#e3f2fd':'#fff')+';
