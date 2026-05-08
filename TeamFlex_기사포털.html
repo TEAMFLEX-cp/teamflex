@@ -1245,7 +1245,7 @@ async function loadAdminCfgFromSB(){
   try{
     // misdelivery_settings에서 admin 설정 + 스케줄 잠금 설정 로드 (전 디바이스 공유)
     var r=await sbClient.from('misdelivery_settings')
-      .select('admin_id,admin_pw,sched_lock_days,sched_perm,ann_perm,blind_list,driver_profiles')
+      .select('admin_id,admin_pw,sched_lock_days,sched_perm,ann_perm,blind_list,driver_profiles,keywords')
       .eq('id',1).single();
     if(r.data){
       var cfg=getCfg();
@@ -1272,6 +1272,11 @@ async function loadAdminCfgFromSB(){
           saveDB(bdb);
           console.log('[Blind] 동기화 완료:',blArr);
         }catch(e2){console.warn('[Blind] 파싱 실패',e2);}
+      }
+      // 오배송 감지 키워드 동기화
+      if(r.data.keywords){
+        try{_mdKeywords=JSON.parse(r.data.keywords)||[];}catch(e2){_mdKeywords=[];}
+        console.log('[Keywords] 로드:',_mdKeywords);
       }
       // 기사 프로필 (차량번호/쿠팡ID/생년월일/차량정보/연료/카톡ID) 동기화
       if(r.data.driver_profiles){
@@ -3280,6 +3285,10 @@ function pgHome(){
         '<div style="font-size:11px;color:#666;margin-top:4px">스케줄</div>'+
       '</div>'+
     '</div>';
+    var annSection2='';
+    if(recentAnns.length>0){
+      annSection2='<div class="card"><div class="ctit" style="display:flex;align-items:center;justify-content:space-between"><span>&#x1F4E2; 최근 공지사항</span><span style="font-size:11px;color:#aaa;cursor:pointer" onclick="go(\'nc\')">전체보기 &#x276F;</span></div>'+annItems+'</div>';
+    }
     setTimeout(loadWeather,200);
     return '<div class="hero">'+
       '<div class="hn" style="margin-bottom:12px">'+
@@ -4078,6 +4087,7 @@ function moveMyWeek(delta){
 // ── 오배송 알림 시스템 ────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
 var _mdCases=[];  // 캐시된 케이스 목록
+var _mdKeywords=[];  // 오배송 감지 키워드 목록
 var SB_URL_MD='https://czpinyfirgvkhdfnvkls.supabase.co';
 
 // ── 오배송 탭 HTML 렌더링 ─────────────────────────────────────────────
@@ -4217,10 +4227,6 @@ function mdCardHtml(c,isAdmin,isLeader){
     '</div>';
   }
 
-  // 내용
-  var content=(c.issue_content||c.raw_message||'').slice(0,200);
-  var contentBox=content?'<div class="md-content">'+mdEsc(content)+'</div>':'';
-
   // 답변 섹션
   var replySec='';
   if(c.status==='pending'){
@@ -4257,47 +4263,40 @@ function mdCardHtml(c,isAdmin,isLeader){
   '</div>';
 }
 
+
 // ── 오배송 상세 모달 ──────────────────────────────────────────────────
 function mdOpenDetail(caseId){
   var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
   if(!c)return;
-
   var imgs=c.image_urls||[];
   if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
-
   var photoHtml='';
   if(imgs&&imgs.length>0){
     photoHtml='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
       imgs.map(function(url){
-        return '<img src="'+mdEsc(url)+'" style="width:100%;max-width:100%;border-radius:10px;object-fit:cover;cursor:pointer" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
+        return '<img src="'+mdEsc(url)+'" style="width:100%;max-width:100%;border-radius:10px;object-fit:cover;cursor:pointer" onclick="mdViewPhoto(''+mdEsc(url)+'')" onerror="this.style.display='none'">';
       }).join('')+
     '</div>';
   }
-
   var rawMsg=c.raw_message||c.issue_content||'';
   var msgHtml=rawMsg
-    ? '<div style="background:#fffde7;border-radius:10px;padding:12px 14px;font-size:12px;color:#5d4037;line-height:1.8;border-left:3px solid #fbc02d;white-space:pre-wrap;word-break:break-all">'+mdEsc(rawMsg)+'</div>'
+    ? '<div style="background:#fffde7;border-radius:10px;padding:12px 14px;font-size:12px;color:#5d4037;line-height:1.8;border-left:3px solid #fbc02d;white-space:pre-wrap;word-break:break-all;margin-bottom:10px">'+mdEsc(rawMsg)+'</div>'
     : '';
-
+  var borderCls={pending:'c-red',replied:'c-blue',approved:'c-green'}[c.status]||'c-red';
   var badgeCls={pending:'mb-red',replied:'mb-blue',approved:'mb-green'}[c.status]||'mb-red';
   var badgeTxt={pending:'🔴 미답변',replied:'🔵 답변완료',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
-
   var el=document.getElementById('md-detail-modal');
-  if(!el){
-    el=document.createElement('div');
-    el.id='md-detail-modal';
-    document.body.appendChild(el);
-  }
-  el.innerHTML='<div class="modal-mid" onclick="if(event.target===this)this.parentElement.style.display=\'none\'">'+
-    '<div class="modal-box" style="max-width:480px">'+
+  if(!el){el=document.createElement('div');el.id='md-detail-modal';document.body.appendChild(el);}
+  el.innerHTML='<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)document.getElementById('md-detail-modal').style.display='none'">'+
+    '<div style="background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
         '<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>'+
-        '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#aaa">✕</button>'+
+        '<button onclick="document.getElementById('md-detail-modal').style.display='none'" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa">✕</button>'+
       '</div>'+
-      '<div style="font-size:15px;font-weight:800;color:#1a237e;margin-bottom:4px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
-      '<div style="font-size:11px;color:#aaa;margin-bottom:12px">'+mdEsc(c.driver_name||c.driver_id||'')+'  ·  '+mdEsc((c.occurred_at||c.created_at||'').slice(0,10))+'</div>'+
-      '<div style="font-size:12px;color:#555;margin-bottom:4px"><b>운송장</b> '+mdEsc(c.waybill_no||'-')+'</div>'+
-      '<div style="font-size:12px;color:#555;margin-bottom:12px"><b>주소</b> '+mdEsc(c.address||'-')+'</div>'+
+      '<div style="font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:10px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
+      '<div style="font-size:12px;color:#888;margin-bottom:4px">기사: <b>'+mdEsc(c.driver_name||c.driver_id||'-')+'</b></div>'+
+      '<div style="font-size:12px;color:#888;margin-bottom:4px">운송장: <b>'+mdEsc(c.waybill_no||'-')+'</b></div>'+
+      '<div style="font-size:12px;color:#888;margin-bottom:12px">주소: '+mdEsc(c.address||'-')+'</div>'+
       photoHtml+
       msgHtml+
     '</div>'+
@@ -6801,6 +6800,24 @@ function pgSettings(){
     '<div class="card"><div class="ctit">&#x1F4E2; 공지 작성 권한</div>'+
     '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
     '<div class="perm-checks">'+annChecks+'</div></div></div>'+
+    '<div class="card" id="md-keyword-card"><div class="ctit">🔍 오배송 감지 키워드</div>'+
+    '<div style="font-size:12px;color:#666;margin-bottom:10px">Teams 메시지에 아래 키워드가 포함되면 오배송 케이스로 자동 감지됩니다.</div>'+
+    '<div id="kw-list" style="margin-bottom:10px">'+
+    (_mdKeywords.length===0 ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">등록된 키워드 없음</div>' :
+      _mdKeywords.map(function(kw,i){
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'+
+          '<span style="flex:1;font-size:13px;font-weight:600;color:#1a237e;background:#f0f4ff;padding:4px 10px;border-radius:20px">'+mdEsc(kw)+'</span>'+
+          '<button onclick="mdDeleteKeyword('+i+')" style="padding:4px 10px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:12px;cursor:pointer">삭제</button>'+
+        '</div>';
+      }).join('')
+    )+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:6px">'+
+      '<input type="text" id="kw-input" placeholder="키워드 입력 (예: 오배송, 회수 필요)" style="flex:1;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')mdAddKeyword()">'+
+      '<button class="btn-ok" onclick="mdAddKeyword()" style="padding:10px 16px">추가</button>'+
+    '</div>'+
+    '<div class="errmsg" id="kw-err"></div>'+
+    '</div>'+
     '<div class="card" id="md-settings-card"><div class="ctit">&#x1F4AC; Teams 오배송 연동</div>'+
     '<div class="cfg-row">'+
     '<div class="cfg-label">Power Automate 웹훅 URL (Teams 답글 게시용)</div>'+
@@ -6902,4 +6919,105 @@ async function saveContactsPw(){
   var cfg=getCfg();cfg.contactsPw=pw;saveCfg(cfg);
   _contactsUnlocked=false;
   alert(pw?'연락처 비밀번호가 설정되었습니다.':'연락처 비밀번호가 해제되었습니다.');
-  document.getElementById('mc').innerHTML=pgSettings(
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+function clearContactsPw(){
+  var cfg=getCfg();cfg.contactsPw='';saveCfg(cfg);
+  _contactsUnlocked=false;
+  alert('연락처 잠금이 해제되었습니다.');
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+
+// ── 오배송 키워드 관리 ────────────────────────────────────────────────
+function mdAddKeyword(){
+  var inp=document.getElementById('kw-input');
+  var errEl=document.getElementById('kw-err');
+  if(!inp||!errEl)return;
+  var kw=inp.value.trim();
+  if(!kw){errEl.textContent='키워드를 입력해주세요.';return;}
+  if(_mdKeywords.indexOf(kw)>=0){errEl.textContent='이미 등록된 키워드입니다.';return;}
+  errEl.textContent='';
+  _mdKeywords.push(kw);
+  inp.value='';
+  mdSaveKeywords();
+}
+function mdDeleteKeyword(idx){
+  if(!confirm('키워드를 삭제할까요?'))return;
+  _mdKeywords.splice(idx,1);
+  mdSaveKeywords();
+}
+async function mdSaveKeywords(){
+  // UI 갱신
+  var kwList=document.getElementById('kw-list');
+  if(kwList){
+    kwList.innerHTML=_mdKeywords.length===0
+      ? '<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">등록된 키워드 없음</div>'
+      : _mdKeywords.map(function(kw,i){
+          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'+
+            '<span style="flex:1;font-size:13px;font-weight:600;color:#1a237e;background:#f0f4ff;padding:4px 10px;border-radius:20px">'+mdEsc(kw)+'</span>'+
+            '<button onclick="mdDeleteKeyword('+i+')" style="padding:4px 10px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:12px;cursor:pointer">삭제</button>'+
+          '</div>';
+        }).join('');
+  }
+  // Supabase 저장
+  if(!sbClient){showToast('Supabase 미연결',false);return;}
+  try{
+    var {error}=await sbClient.from('misdelivery_settings')
+      .update({keywords:JSON.stringify(_mdKeywords),updated_by:CU?CU.name:'admin',updated_at:new Date().toISOString()})
+      .eq('id',1);
+    if(error){
+      console.warn('[Keywords] Supabase 저장 실패:',error.message);
+      showToast('⚠ 저장 실패: SQL 컬럼 추가 필요',false);
+    }else{
+      showToast('✅ 키워드 저장 완료',true);
+    }
+  }catch(e){console.warn('[Keywords]',e);showToast('저장 오류',false);}
+}
+
+async function saveAdminCreds(){
+  var aid=document.getElementById('cfg-aid').value.trim();
+  var apw1=document.getElementById('cfg-apw1').value;
+  var apw2=document.getElementById('cfg-apw2').value;
+  var errEl=document.getElementById('cfg-err');
+  errEl.textContent='';
+  if(!aid){errEl.textContent='아이디를 입력해주세요.';return;}
+  if(apw1.length<4){errEl.textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
+  if(apw1!==apw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
+  // 1. localStorage 저장
+  var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
+  // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
+  if(sbClient){
+    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
+    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+    var {error:sbErr}=await sbClient.from('misdelivery_settings')
+      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
+      .eq('id',1);
+    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
+    if(sbErr){
+      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
+      errEl.style.color='#e65100';
+      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
+      // localStorage는 저장됐으므로 현재 기기에선 적용됨
+      setTimeout(function(){
+        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
+        doLogout();
+      },300);
+      return;
+    }
+  }
+  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n다시 로그인해주세요.');
+  doLogout();
+}
+async function resetAdminCreds(){
+  if(!confirm('관리자 계정을 기본값으로 초기화할까요?\n초기화 후 기본 아이디/비밀번호로 로그인해야 합니다.'))return;
+  var cfg=getCfg();
+  delete cfg.adminId;delete cfg.adminPw;saveCfg(cfg);
+  if(sbClient){
+    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(function(){});
+  }
+  alert('관리자 계정이 초기화됐습니다. 기본 계정으로 로그인해주세요.');
+  doLogout();
+}
+
+</script>
+</body></html>
