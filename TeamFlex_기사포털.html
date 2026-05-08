@@ -7120,4 +7120,186 @@ function pgSettings(){
     '<div class="perm-checks">'+schedChecks+'</div></div>'+
     '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:10px">&#x23F1; 팀장·조장 수정 가능 기간</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    [30,60,90,365].map(function(d){var sel=(cfg.schedEditDays||90)===d;var lbl=d>=365?'1년':(d+'일');return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?'#1565c0':'#e0e0e0')+';background:'+(sel?'#e3f2fd':'#fff')+';
+    [30,60,90,365].map(function(d){var sel=(cfg.schedEditDays||90)===d;var lbl=d>=365?'1년':(d+'일');return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?'#1565c0':'#e0e0e0')+';background:'+(sel?'#e3f2fd':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?'#1565c0':'#555')+'"><input type="radio" name="schedDays" value="'+d+'" '+(sel?'checked':'')+' onchange="setSchedEditDays('+d+')" style="accent-color:#1565c0">'+lbl+'</label>';}).join('')+
+    '</div></div>'+
+    '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:8px">🔒 과거 수정 잠금 — 며칠 이전 수정 불가 (0 = 제한없음)</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    (function(){
+      var opts=[
+        {v:0,lbl:'제한없음'},
+        {v:2,lbl:'2일 이전 잠금'},
+        {v:3,lbl:'3일 이전 잠금'},
+        {v:4,lbl:'4일 이전 잠금'},
+        {v:5,lbl:'5일 이전 잠금'},
+        {v:'week',lbl:'🔒 해당주차 금지'}
+      ];
+      var cur=cfg.schedMinLockDays;if(cur===undefined||cur===null)cur=0;
+      return opts.map(function(o){
+        var sel=String(cur)===String(o.v);
+        var isWeek=(o.v==='week');
+        var bc=isWeek?'#7b1fa2':'#c62828';
+        var bg=isWeek?'#f3e5f5':'#ffebee';
+        var val=isWeek?'\'week\'':o.v;
+        return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?bc:'#e0e0e0')+';background:'+(sel?bg:'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?(isWeek?'#7b1fa2':'#c62828'):'#555')+'"><input type="radio" name="schedMinLock" value="'+o.v+'" '+(sel?'checked':'')+' onchange="setSchedMinLockDays('+val+')" style="accent-color:'+(isWeek?'#7b1fa2':'#c62828')+'">'+o.lbl+'</label>';
+      }).join('');
+    })()+
+    '</div></div></div>'+
+    '<div class="card"><div class="ctit">&#x1F4E2; 공지 작성 권한</div>'+
+    '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
+    '<div class="perm-checks">'+annChecks+'</div></div></div>'+
+    '<div class="card" id="md-settings-card"><div class="ctit">&#x1F4AC; Teams 오배송 연동</div>'+
+    '<div class="cfg-row">'+
+    '<div class="cfg-label">Power Automate 웹훅 URL (Teams 답글 게시용)</div>'+
+    '<div class="fg" style="margin-bottom:8px"><input type="text" id="cfg-pa-url" placeholder="https://prod-xx.westus.logic.azure.com/..." style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none" oninput="mdLoadPaUrl()"></div>'+
+    '<button class="btn-ok" onclick="mdSavePaUrl()">URL 저장</button>'+
+    '<div class="errmsg" id="cfg-pa-err" style="margin-top:6px"></div>'+
+    '</div></div>'+
+    // ── 공지 알림 설정 (관리자 전용) ──
+    '<div class="card"><div class="ctit">&#x1F514; 공지 알림 설정</div>'+
+    '<div style="background:#f8f9ff;border-radius:10px;padding:12px 14px">'+
+      '<div style="font-size:12px;color:#555;margin-bottom:12px">공지 등록 시 기사들에게 발송되는 알림을 관리합니다.</div>'+
+      // 알림음
+      (function(){var on=getCfg().notifSound!==false;return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee">'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:700;color:#333">&#x1F50A; 알림음 (진동 포함)</div>'+
+          '<div style="font-size:11px;color:#888;margin-top:2px">공지 등록 시 수신기기 소리·진동</div>'+
+        '</div>'+
+        '<button id="notif-sound-btn" onclick="toggleNotifSetting(\'notifSound\')" style="padding:6px 18px;border-radius:20px;border:none;background:'+(on?'#1565c0':'#e0e0e0')+';color:'+(on?'#fff':'#666')+';font-size:13px;font-weight:700;cursor:pointer">'+
+          (on?'켜짐':'꺼짐')+'</button>'+
+      '</div>';})() +
+      // 푸시
+      (function(){var on=getCfg().notifPush!==false;return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:700;color:#333">&#x1F4F2; Push 알림 발송</div>'+
+          '<div style="font-size:11px;color:#888;margin-top:2px">앱 꺼진 상태에서도 OS 알림으로 전송</div>'+
+        '</div>'+
+        '<button id="notif-push-btn" onclick="toggleNotifSetting(\'notifPush\')" style="padding:6px 18px;border-radius:20px;border:none;background:'+(on?'#1565c0':'#e0e0e0')+';color:'+(on?'#fff':'#666')+';font-size:13px;font-weight:700;cursor:pointer">'+
+          (on?'켜짐':'꺼짐')+'</button>'+
+      '</div>';})() +
+    '</div></div>';
+}
+function toggleNotifSetting(key){
+  var cfg=getCfg();
+  var cur=cfg[key]!==false; // undefined → true(기본 켜짐)
+  cfg[key]=!cur;
+  saveCfg(cfg);
+  // 버튼 즉시 업데이트
+  var on=!cur;
+  var btnId=key==='notifSound'?'notif-sound-btn':'notif-push-btn';
+  var btn=document.getElementById(btnId);
+  if(btn){btn.textContent=on?'켜짐':'꺼짐';btn.style.background=on?'#1565c0':'#e0e0e0';btn.style.color=on?'#fff':'#666';}
+  showToast((on?'✅':'🔕')+' '+(key==='notifSound'?'알림음':'Push 알림')+' '+(on?'활성화':'비활성화'),true);
+}
+async function mdLoadPaUrl(){
+  // called on focus — load current URL from DB
+  var el=document.getElementById('cfg-pa-url');
+  if(!el||el.dataset.loaded)return;
+  el.dataset.loaded='1';
+  var {data}=await sbClient.from('misdelivery_settings').select('pa_webhook_url').eq('id',1).single();
+  if(data&&data.pa_webhook_url)el.value=data.pa_webhook_url;
+}
+async function mdSavePaUrl(){
+  var url=(document.getElementById('cfg-pa-url').value||'').trim();
+  var errEl=document.getElementById('cfg-pa-err');
+  if(!url){errEl.textContent='URL을 입력해주세요.';return;}
+  if(!url.startsWith('http')){errEl.textContent='올바른 URL을 입력해주세요.';return;}
+  var {error}=await sbClient.from('misdelivery_settings').update({pa_webhook_url:url,updated_by:CU.name,updated_at:new Date().toISOString()}).eq('id',1);
+  if(error){errEl.textContent='저장 실패: '+error.message;return;}
+  errEl.style.color='#2e7d32';errEl.textContent='✅ 저장되었습니다.';
+  setTimeout(function(){errEl.textContent='';errEl.style.color='';},3000);
+}
+function togglePerm(type,role,checked){
+  var cfg=getCfg();
+  var key=type==='sched'?'schedPerm':'annPerm';
+  var arr=cfg[key]||[];
+  var idx=arr.indexOf(role);
+  if(checked&&idx<0)arr.push(role);
+  else if(!checked&&idx>=0)arr.splice(idx,1);
+  cfg[key]=arr;saveCfg(cfg);
+}
+function setSchedEditDays(days){
+  var cfg=getCfg();cfg.schedEditDays=days;saveCfg(cfg);
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+function setSchedMinLockDays(days){
+  var cfg=getCfg();
+  var val=(days==='week')?'week':parseInt(days)||0;
+  cfg.schedMinLockDays=val;
+  saveCfg(cfg);
+  // Supabase에 저장 → 모든 기기(팀장/조장 포함)에 즉시 반영
+  if(sbClient){
+    sbClient.from('misdelivery_settings')
+      .update({sched_lock_days:String(val),updated_by:CU?CU.name:'admin',updated_at:new Date().toISOString()})
+      .eq('id',1)
+      .then(function(r){
+        if(r&&r.error){
+          // 컬럼 없으면 SQL 안내
+          console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0\';');
+          showToast('⚠ 잠금 설정 저장 실패 — SQL 실행 필요',false);
+        }else{
+          showToast('🔒 잠금 설정이 모든 기기에 적용됩니다',true);
+        }
+      }).catch(function(e){console.warn('[setSchedLock]',e);});
+  }
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+async function saveContactsPw(){
+  var pw=document.getElementById('cfg-cpw').value.trim();
+  var cfg=getCfg();cfg.contactsPw=pw;saveCfg(cfg);
+  _contactsUnlocked=false;
+  alert(pw?'연락처 비밀번호가 설정되었습니다.':'연락처 비밀번호가 해제되었습니다.');
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+function clearContactsPw(){
+  var cfg=getCfg();cfg.contactsPw='';saveCfg(cfg);
+  _contactsUnlocked=false;
+  alert('연락처 잠금이 해제되었습니다.');
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+async function saveAdminCreds(){
+  var aid=document.getElementById('cfg-aid').value.trim();
+  var apw1=document.getElementById('cfg-apw1').value;
+  var apw2=document.getElementById('cfg-apw2').value;
+  var errEl=document.getElementById('cfg-err');
+  errEl.textContent='';
+  if(!aid){errEl.textContent='아이디를 입력해주세요.';return;}
+  if(apw1.length<4){errEl.textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
+  if(apw1!==apw2){errEl.textContent='비밀번호가 일치하지 않습니다.';return;}
+  // 1. localStorage 저장
+  var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
+  // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
+  if(sbClient){
+    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
+    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+    var {error:sbErr}=await sbClient.from('misdelivery_settings')
+      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
+      .eq('id',1);
+    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
+    if(sbErr){
+      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
+      errEl.style.color='#e65100';
+      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
+      // localStorage는 저장됐으므로 현재 기기에선 적용됨
+      setTimeout(function(){
+        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
+        doLogout();
+      },300);
+      return;
+    }
+  }
+  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n다시 로그인해주세요.');
+  doLogout();
+}
+async function resetAdminCreds(){
+  if(!confirm('관리자 계정을 기본값으로 초기화할까요?\n초기화 후 기본 아이디/비밀번호로 로그인해야 합니다.'))return;
+  var cfg=getCfg();
+  delete cfg.adminId;delete cfg.adminPw;saveCfg(cfg);
+  if(sbClient){
+    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(function(){});
+  }
+  alert('관리자 계정이 초기화됐습니다. 기본 계정으로 로그인해주세요.');
+  doLogout();
+}
+
+</script>
+</body></html>
