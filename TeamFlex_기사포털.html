@@ -4521,16 +4521,30 @@ function mdOpenDetail(caseId){
       '<div style="background:#e8f0fe;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:2">'+
         '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">1. 배송기사</span><span style="color:#1a237e;font-weight:700">'+mdEsc(drvName)+'</span></div>'+
         '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">2. 운송장</span><span style="color:#1a1a1a">'+mdEsc(c.waybill_no||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">3. 주소</span><span style="color:#1a1a1a">'+mdEsc(c.address||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">4. 발생일</span><span style="color:#1a1a1a">'+mdEsc(dateStr)+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">5. 인입내용</span><span style="color:#1a1a1a">'+mdEsc(c.issue_content||'-')+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">3. 라우트</span><span style="color:#1a1a1a">'+mdEsc(c.route||'-')+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">4. 주소</span><span style="color:#1a1a1a">'+mdEsc(c.address||'-')+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">5. 발생일</span><span style="color:#1a1a1a">'+mdEsc(dateStr)+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">6. 인입내용</span><span style="color:#1a1a1a">'+mdEsc(c.issue_content||'-')+'</span></div>'+
       '</div>'+
       photoHtml+
       replyHtml+
-      (isAdmin?
-        '<div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
-          '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
-          '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
+      ((isAdmin||isLeader)?
+        '<div style="margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
+          // 승인 버튼 - 기사 답변 있을 때만 활성화
+          (function(){
+            var hasReply=(c.status==='replied');
+            var apprStyle=hasReply
+              ?'width:100%;padding:11px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px'
+              :'width:100%;padding:11px;background:#e0e0e0;color:#aaa;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:not-allowed;margin-bottom:8px';
+            var apprLabel=hasReply?'✅ 승인 (팀즈답글 게시)':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
+            return '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>';
+          })()+
+          // 미전송완료 + 삭제 (관리자만)
+          (isAdmin?
+            '<div style="display:flex;gap:8px">'+
+              '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
+              '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
+            '</div>':'')+
         '</div>':'')+
     '</div>'+
   '</div>';
@@ -4837,6 +4851,20 @@ function mdPushToLeaders(title,body,caseId){
       data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'},
     }),
   }).catch(function(e){console.warn('[mdPushToLeaders]',e);});
+}
+
+// ── 최신 답변 승인 (모달 하단 버튼용) ────────────────────────────────
+async function mdApproveLatestReply(caseId){
+  if(!sbClient||!CU)return;
+  try{
+    var {data:replies}=await sbClient.from('misdelivery_replies')
+      .select('id').eq('case_id',caseId)
+      .eq('approval_status','pending')
+      .order('created_at',{ascending:false}).limit(1);
+    if(!replies||replies.length===0){alert('승인할 답변이 없습니다.');return;}
+    await mdApproveReply(replies[0].id,caseId);
+    document.getElementById('md-detail-modal').style.display='none';
+  }catch(e){console.error('[mdApproveLatestReply]',e);alert('승인 실패: '+e.message);}
 }
 
 // ── 미전송완료 처리 (관리자) ──────────────────────────────────────────
@@ -7269,37 +7297,4 @@ async function saveAdminCreds(){
   var cfg=getCfg();cfg.adminId=aid;cfg.adminPw=apw1;saveCfg(cfg);
   // 2. Supabase 저장 (크로스 디바이스 — 컬럼이 있어야 작동)
   if(sbClient){
-    var btn=document.querySelector('[onclick="saveAdminCreds()"]');
-    if(btn){btn.disabled=true;btn.textContent='저장 중...';}
-    var {error:sbErr}=await sbClient.from('misdelivery_settings')
-      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
-      .eq('id',1);
-    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
-    if(sbErr){
-      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
-      errEl.style.color='#e65100';
-      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
-      // localStorage는 저장됐으므로 현재 기기에선 적용됨
-      setTimeout(function(){
-        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
-        doLogout();
-      },300);
-      return;
-    }
-  }
-  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n다시 로그인해주세요.');
-  doLogout();
-}
-async function resetAdminCreds(){
-  if(!confirm('관리자 계정을 기본값으로 초기화할까요?\n초기화 후 기본 아이디/비밀번호로 로그인해야 합니다.'))return;
-  var cfg=getCfg();
-  delete cfg.adminId;delete cfg.adminPw;saveCfg(cfg);
-  if(sbClient){
-    await sbClient.from('misdelivery_settings').update({admin_id:null,admin_pw:null,updated_by:'관리자',updated_at:new Date().toISOString()}).eq('id',1).catch(function(){});
-  }
-  alert('관리자 계정이 초기화됐습니다. 기본 계정으로 로그인해주세요.');
-  doLogout();
-}
-
-</script>
-</body></html>
+    var btn=document.querySelector('[on
