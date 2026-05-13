@@ -15,81 +15,6 @@
 <link rel="manifest" href="/manifest.json">
 <title>[TEST] TeamFlex 기사 포털</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser/lib/msal-browser.min.js"></script>
-<script>
-// ── MSAL Microsoft 인증 (Teams 이미지 로드용) ──────────────────────────
-var MSAL_CLIENT_ID='e3428c2f-8025-4a24-9bec-bee6d720b164';
-var MSAL_TENANT_ID='15bfc304-d02b-45f6-97b6-552bd1002b1e';
-var msalApp=null;
-var _msGraphToken=null;
-var _msGraphScopes=['https://graph.microsoft.com/Chat.Read','https://graph.microsoft.com/Chat.ReadWrite'];
-
-(function(){
-  function initMsal(){
-    if(typeof msal==='undefined'){setTimeout(initMsal,600);return;}
-    try{
-      msalApp=new msal.PublicClientApplication({
-        auth:{clientId:MSAL_CLIENT_ID,authority:'https://login.microsoftonline.com/'+MSAL_TENANT_ID,redirectUri:window.location.origin+window.location.pathname},
-        cache:{cacheLocation:'sessionStorage',storeAuthStateInCookie:false}
-      });
-      msalApp.handleRedirectPromise().then(function(resp){
-        if(resp&&resp.accessToken){_msGraphToken=resp.accessToken;}
-        var accts=msalApp.getAllAccounts();
-        var silentReq=accts.length>0?msalApp.acquireTokenSilent({scopes:_msGraphScopes,account:accts[0]}):msalApp.ssoSilent({scopes:_msGraphScopes});
-        silentReq.then(function(r){_msGraphToken=r.accessToken;console.log('[MSAL] 토큰 획득 성공');}).catch(function(){console.info('[MSAL] MS 로그인 없음');});
-      }).catch(function(e){console.warn('[MSAL]',e);});
-    }catch(e){console.warn('[MSAL] 초기화:',e);}
-  }
-  window.addEventListener('load',initMsal);
-})();
-
-async function getMsGraphToken(){
-  if(_msGraphToken)return _msGraphToken;
-  if(!msalApp)return null;
-  try{
-    var accts=msalApp.getAllAccounts();
-    var r=accts.length>0?await msalApp.acquireTokenSilent({scopes:_msGraphScopes,account:accts[0]}):await msalApp.ssoSilent({scopes:_msGraphScopes});
-    _msGraphToken=r.accessToken;return _msGraphToken;
-  }catch(e){return null;}
-}
-
-async function msLoginAndLoadImages(){
-  if(!msalApp)return;
-  try{
-    var r=await msalApp.loginPopup({scopes:_msGraphScopes});
-    _msGraphToken=r.accessToken;
-    // 로그인 후 대기 중인 이미지들 다시 로드
-    document.querySelectorAll('.md-ms-login-btn').forEach(function(btn){
-      var uid=btn.getAttribute('data-uid');
-      var imgUrl=btn.getAttribute('data-url');
-      var fb=btn.getAttribute('data-fb');
-      if(uid&&imgUrl)loadGraphImage(uid,imgUrl,fb||'');
-    });
-  }catch(e){console.warn('[MSAL] 로그인 취소:',e);}
-}
-
-async function loadGraphImage(uid,url,fallbackHtml){
-  var el=document.getElementById(uid);
-  if(!el)return;
-  var token=await getMsGraphToken();
-  if(!token){
-    // 로그인 버튼 포함 폴백
-    var loginBtn='<button class="md-ms-login-btn" data-uid="'+uid+'" data-url="'+url+'" data-fb="'+encodeURIComponent(fallbackHtml||'')+'" onclick="this.disabled=true;msLoginAndLoadImages()" style="width:80px;height:60px;border-radius:8px;background:#e8f0fe;border:1.5px solid #4285f4;font-size:10px;color:#1565c0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;flex-shrink:0"><span style="font-size:18px">🔐</span><span>MS 로그인</span></button>';
-    el.outerHTML=loginBtn;
-    return;
-  }
-  try{
-    var resp=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
-    if(!resp.ok){if(resp.status===401){_msGraphToken=null;}throw new Error(resp.status);}
-    var blob=await resp.blob();
-    var blobUrl=URL.createObjectURL(blob);
-    el.outerHTML='<img class="md-photo" src="'+blobUrl+'" onclick="mdViewPhoto(\''+blobUrl+'\')">';
-  }catch(e){
-    var elem=document.getElementById(uid);
-    if(elem)elem.outerHTML=fallbackHtml||'';
-  }
-}
-</script>
 <script>
 // SheetJS 로드 (다중 CDN 폴백)
 (function(){
@@ -313,8 +238,7 @@ textarea.ann-input:focus{border-color:#1565c0}
 .md-photos::-webkit-scrollbar{display:none}
 .md-photo{width:80px;height:60px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer;border:2px solid transparent;transition:border-color .15s}
 .md-photo:hover{border-color:#1565c0}
-.md-photo-placeholder{width:80px;height:60px;border-radius:8px;background:#e8eaf6;display:inline-flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;cursor:pointer}
-.md-teams-ph{text-decoration:none;border:2px solid #c5cae9}
+.md-photo-placeholder{width:80px;height:60px;border-radius:8px;background:#e8eaf6;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
 .md-content{background:#fffde7;margin:0 12px 8px;border-radius:8px;padding:8px 10px;font-size:11px;color:#795548;line-height:1.6;border-left:3px solid #fbc02d}
 .md-reply-sec{padding:8px 14px 12px}
 .md-ta{width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:12px;resize:none;outline:none;font-family:inherit;min-height:56px;color:#333}
@@ -866,10 +790,7 @@ async function syncFromSupabase(){
         else if(_localStatus==='approved'&&sbClient){
           (function(n,s){sbClient.from('drivers').update({status:s,synced_at:new Date().toISOString()}).eq('name',n).then(function(){}).catch(function(e){console.warn('[Sync fix]',e);});})(d.name,_localStatus);
         }
-        // ✅ 비밀번호 다운그레이드 방지: 로컬에 실제 비밀번호 있으면 Supabase의 1234로 덮어쓰지 않음
-        var _sbPw=d.password||'1234';
-        var _lcPw=db[d.name].password||'1234';
-        if(_sbPw!=='1234'||_lcPw==='1234'){db[d.name].password=_sbPw;}
+        db[d.name].password=d.password||'1234';
         if(d.phone!=null&&d.phone!=='')db[d.name].phone=d.phone; // 빈값으로 덮어쓰기 방지
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
@@ -1247,21 +1168,28 @@ async function schedRefresh(){
     if(btn2){btn2.disabled=false;btn2.textContent='🔄 새로고침';}
   }
 }
-async function sbSaveSchedOvr(key,newDriver){
+async function sbSaveSchedOvr(key,newDriver,oldDriver){
   if(!sbClient){showToast('⚠ 서버 연결 없음 — 업데이트 실패',false);return;}
   // key 형식: weekStart|||leaderKey|||routeRaw|||date
   var parts=key.split('|||');
   if(parts.length<4)return;
   var ws=parts[0],rr=parts[2],dt=parts[3];
+  var changedByName=CU?CU.name:'';
   try{
     var res=await sbClient.from('weekly_schedules')
-      .update({driver_name:newDriver,synced_at:new Date().toISOString()})
+      .update({driver_name:newDriver,synced_at:new Date().toISOString(),changed_by:changedByName})
       .eq('week_start',ws).eq('work_date',dt).eq('route_raw',rr);
     if(res&&res.error){
       console.warn('sbSaveSchedOvr error',res.error);
       showToast('❌ 업데이트 실패: '+res.error.message,false);
     } else {
       showToast('✅ 업데이트 완료',true);
+      // schedule_changes 이력 테이블에도 기록
+      sbClient.from('schedule_changes').insert({
+        week_start:ws, work_date:dt, route:rr,
+        old_driver:oldDriver||'', new_driver:newDriver||'',
+        changed_by:changedByName
+      }).then(function(r){if(r&&r.error)console.warn('schedule_changes insert:',r.error.message);});
     }
   }catch(e){
     console.warn('sbSaveSchedOvr',e);
@@ -1324,7 +1252,7 @@ async function loadAdminCfgFromSB(){
   try{
     // misdelivery_settings에서 admin 설정 + 스케줄 잠금 설정 로드 (전 디바이스 공유)
     var r=await sbClient.from('misdelivery_settings')
-      .select('admin_id,admin_pw,sched_lock_days,sched_perm,ann_perm,blind_list,driver_profiles,keywords')
+      .select('admin_id,admin_pw,sched_lock_days,sched_perm,ann_perm,blind_list,driver_profiles')
       .eq('id',1).single();
     if(r.data){
       var cfg=getCfg();
@@ -1351,11 +1279,6 @@ async function loadAdminCfgFromSB(){
           saveDB(bdb);
           console.log('[Blind] 동기화 완료:',blArr);
         }catch(e2){console.warn('[Blind] 파싱 실패',e2);}
-      }
-      // 오배송 감지 키워드 동기화
-      if(r.data.keywords){
-        try{_mdKeywords=JSON.parse(r.data.keywords)||[];}catch(e2){_mdKeywords=[];}
-        console.log('[Keywords] 로드:',_mdKeywords);
       }
       // 기사 프로필 (차량번호/쿠팡ID/생년월일/차량정보/연료/카톡ID) 동기화
       if(r.data.driver_profiles){
@@ -1626,7 +1549,9 @@ function startRealtime(){
     // ② 스케줄 변경 (UPDATE) — 앱 내 직접 수정 시
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'weekly_schedules'},function(payload){
       if(Date.now()-_rtStartTs<2000)return;
-      _onSchedChange(payload.new||{},payload.old||{},CU?CU.name:'');
+      // changed_by 컬럼에서 실제 변경자 이름 읽기 (없으면 빈 문자열)
+      var changer=(payload.new&&payload.new.changed_by)||'';
+      _onSchedChange(payload.new||{},payload.old||{},changer);
     })
     // ③ PC 프로그램 DELETE (행 삭제) → 버퍼에 보관
     .on('postgres_changes',{event:'DELETE',schema:'public',table:'weekly_schedules'},function(payload){
@@ -2600,16 +2525,7 @@ function tryAutoLogin(){
             if(_db[s.name]){
               var changed=false;
               if(sr.data.role&&_db[s.name].role!==sr.data.role){_db[s.name].role=sr.data.role;changed=true;}
-              // ✅ 상태 다운그레이드 방지: approved → inactive/pending 으로 절대 덮어쓰지 않음
-              var _spAL={inactive:0,pending:1,approved:2,blocked:3,kicked:3};
-              var _sbSt=sr.data.status||'inactive';
-              var _lcSt=_db[s.name].status||'inactive';
-              if((_spAL[_sbSt]||0)>(_spAL[_lcSt]||0)){
-                _db[s.name].status=_sbSt;changed=true;
-              } else if(_lcSt==='approved'&&(_spAL[_sbSt]||0)<2){
-                // 로컬이 approved인데 Supabase가 낮으면 → Supabase를 approved로 복원
-                sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',s.name).catch(function(){});
-              }
+              if(sr.data.status)_db[s.name].status=sr.data.status;
               if(changed){saveDB(_db);if(CU&&CU.name===s.name)CU.role=sr.data.role;}
             }
           }
@@ -3273,12 +3189,20 @@ function go(tab){
   else if(tab==='ab')mc.innerHTML=pgAnn(true);
   else if(tab==='as'){mc.innerHTML=pgFullSched();_scrollFtwToToday();setTimeout(_fixTodColBorders,50);}
   else if(tab==='az')mc.innerHTML=pgAdminSettle();
-  else if(tab==='sl'){mc.innerHTML=pgSchedLog();mc.scrollTop=0;}
+  else if(tab==='sl'){
+    mc.innerHTML=pgSchedLog();mc.scrollTop=0;
+    // 관리자: Supabase에서 전체 이력 동기화 후 재렌더링
+    if(CU&&CU.role==='admin'&&sbClient){
+      _syncAdminSchedLog().then(function(){
+        if(document.getElementById('mc'))document.getElementById('mc').innerHTML=pgSchedLog();
+      }).catch(function(){});
+    }
+  }
   else if(tab==='ap')mc.innerHTML=pgPermissions();
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='dv')mc.innerHTML=pgDriverSettings();
-  else if(tab==='md'){mc.innerHTML=pgMisdelivery();mc.scrollTop=0;mdLoadCases();mdFillArchiveMonths();}
+  else if(tab==='md'){mc.innerHTML=pgMisdelivery();mc.scrollTop=0;mdLoadCases();}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
   if(CU&&tab!=='nc'&&tab!=='ab'){setTimeout(function(){checkUnreadAnns(true);},300);}
 }
@@ -3373,10 +3297,6 @@ function pgHome(){
         '<div style="font-size:11px;color:#666;margin-top:4px">스케줄</div>'+
       '</div>'+
     '</div>';
-    var annSection2='';
-    if(recentAnns.length>0){
-      annSection2='<div class="card"><div class="ctit" style="display:flex;align-items:center;justify-content:space-between"><span>&#x1F4E2; 최근 공지사항</span><span style="font-size:11px;color:#aaa;cursor:pointer" onclick="go(\'nc\')">전체보기 &#x276F;</span></div>'+annItems+'</div>';
-    }
     setTimeout(loadWeather,200);
     return '<div class="hero">'+
       '<div class="hn" style="margin-bottom:12px">'+
@@ -4175,7 +4095,6 @@ function moveMyWeek(delta){
 // ── 오배송 알림 시스템 ────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
 var _mdCases=[];  // 캐시된 케이스 목록
-var _mdKeywords=[];  // 오배송 감지 키워드 목록
 var SB_URL_MD='https://czpinyfirgvkhdfnvkls.supabase.co';
 
 // ── 오배송 탭 HTML 렌더링 ─────────────────────────────────────────────
@@ -4205,19 +4124,8 @@ function pgMisdelivery(){
     '</div>';
   }
 
-  var archiveSec='';
-  if(isAdmin){
-    archiveSec='<div style="margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-      '<span style="font-size:12px;color:#888;font-weight:600">📦 아카이브 조회</span>'+
-      '<select id="md-archive-month" style="flex:1;min-width:120px;padding:6px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:12px;color:#333;background:#fafafa" onchange="mdLoadArchive(this.value)">'+
-        '<option value="">-- 월 선택 --</option>'+
-      '</select>'+
-    '</div>'+
-    '<div id="md-archive-list" style="display:none"></div>';
-  }
-
   return '<div class="stit">🚨 오배송 알림</div>'+
-    modeSec+sumSec+archiveSec+
+    modeSec+sumSec+
     '<div id="md-list"><div class="md-empty"><div class="md-empty-icon">⏳</div><div>로딩 중...</div></div></div>';
 }
 
@@ -4258,24 +4166,8 @@ async function mdLoadCases(){
       if((el=document.getElementById('md-n-done')))el.textContent=nD;
     }
 
-    // 30일 지난 완료건 자동 아카이브
+    // 2시간 지난 완료건 자동 아카이브
     await mdAutoArchive(_mdCases);
-
-    // 신규 pending 케이스 알림 (아직 notified 안 된 것)
-    if(isAdmin||isLeader){
-      var notifKey='md_notified_ids';
-      var notifiedIds=JSON.parse(localStorage.getItem(notifKey)||'[]');
-      _mdCases.forEach(function(c){
-        if(c.status==='pending'&&notifiedIds.indexOf(c.id)<0){
-          notifiedIds.push(c.id);
-          mdPushToLeaders('🚨 오배송 접수',
-            (c.driver_name||c.driver_id||'기사')+'님 오배송 접수 ('+( c.waybill_no||'')+')' ,c.id);
-          mdPushToDriver(c.driver_name||'','🚨 오배송 접수됨',
-            '오배송이 접수되었습니다. 오배송 탭에서 확인 후 답변해주세요.',c.id);
-        }
-      });
-      localStorage.setItem(notifKey,JSON.stringify(notifiedIds.slice(-200)));
-    }
 
     mdRenderList(_mdCases);
   }catch(e){
@@ -4285,84 +4177,19 @@ async function mdLoadCases(){
   }
 }
 
-// ── 자동 아카이브 (처리완료 30일 경과) ───────────────────────────────
+// ── 자동 아카이브 (처리완료 2시간 경과) ──────────────────────────────
 async function mdAutoArchive(cases){
   if(!sbClient)return;
   var now=Date.now();
   var toArchive=cases.filter(function(c){
     if(c.status!=='approved')return false;
     var upd=new Date(c.created_at).getTime();
-    return (now-upd)>30*24*60*60*1000;
+    return (now-upd)>2*60*60*1000;
   });
   for(var i=0;i<toArchive.length;i++){
     await sbClient.from('misdelivery_cases')
       .update({status:'archived',archived_at:new Date().toISOString()})
       .eq('id',toArchive[i].id);
-  }
-}
-
-// ── 아카이브 월 목록 채우기 ───────────────────────────────────────────
-async function mdFillArchiveMonths(){
-  if(!sbClient)return;
-  var sel=document.getElementById('md-archive-month');
-  if(!sel)return;
-  try{
-    var {data:rows}=await sbClient.from('misdelivery_cases')
-      .select('created_at')
-      .eq('status','archived')
-      .order('created_at',{ascending:false})
-      .limit(500);
-    if(!rows||rows.length===0)return;
-    var months={};
-    rows.forEach(function(r){
-      var m=(r.created_at||'').slice(0,7); // YYYY-MM
-      if(m)months[m]=true;
-    });
-    var opts='<option value="">-- 월 선택 --</option>';
-    Object.keys(months).sort().reverse().forEach(function(m){
-      opts+='<option value="'+m+'">'+m+'</option>';
-    });
-    sel.innerHTML=opts;
-  }catch(e){console.warn('[mdFillArchiveMonths]',e);}
-}
-
-// ── 아카이브 로드 ─────────────────────────────────────────────────────
-async function mdLoadArchive(month){
-  var box=document.getElementById('md-archive-list');
-  if(!box)return;
-  if(!month){box.style.display='none';return;}
-  box.style.display='block';
-  box.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0">로딩 중...</div>';
-  try{
-    var from=month+'-01';
-    // last day of month
-    var y=parseInt(month.split('-')[0]),mo=parseInt(month.split('-')[1]);
-    var to=new Date(y,mo,1).toISOString().slice(0,10); // first day of next month
-    var {data:cases,error}=await sbClient.from('misdelivery_cases')
-      .select('*')
-      .eq('status','archived')
-      .gte('created_at',from)
-      .lt('created_at',to)
-      .order('created_at',{ascending:false});
-    if(error)throw error;
-    if(!cases||cases.length===0){
-      box.innerHTML='<div style="font-size:12px;color:#aaa;text-align:center;padding:12px">이 달 아카이브 없음</div>';
-      return;
-    }
-    box.innerHTML='<div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px">'+month+' 아카이브 ('+cases.length+'건)</div>'+
-      cases.map(function(c){
-        return '<div style="background:#f9f9f9;border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:12px">'+
-          '<div style="display:flex;justify-content:space-between;margin-bottom:3px">'+
-            '<span style="font-weight:700;color:#444">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>'+
-            '<span style="color:#bbb">'+mdEsc((c.occurred_at||c.created_at||'').slice(0,10))+'</span>'+
-          '</div>'+
-          '<div style="color:#666">'+mdEsc(c.issue_content||'-')+'</div>'+
-          '<div style="color:#aaa;font-size:11px;margin-top:2px">운송장: '+mdEsc(c.waybill_no||'-')+'</div>'+
-        '</div>';
-      }).join('');
-  }catch(e){
-    console.error('[mdLoadArchive]',e);
-    box.innerHTML='<div style="font-size:12px;color:#e53935;padding:8px">로드 실패: '+mdEsc(e.message)+'</div>';
   }
 }
 
@@ -4377,9 +4204,9 @@ function mdRenderList(cases){
   var isAdmin=CU.role==='admin';
   var isLeader=CU.role==='leader'||CU.role==='sub';
 
-  // 승인대기(replied) 먼저, 그 다음 미답변(pending), 마지막 완료(approved)
+  // 미처리 먼저, 그 다음 완료
   var sorted=cases.slice().sort(function(a,b){
-    var order={replied:0,pending:1,approved:2};
+    var order={pending:0,replied:1,approved:2};
     return (order[a.status]||0)-(order[b.status]||0)||
       new Date(b.created_at).getTime()-new Date(a.created_at).getTime();
   });
@@ -4389,223 +4216,60 @@ function mdRenderList(cases){
 
 // ── 케이스 카드 HTML ──────────────────────────────────────────────────
 function mdCardHtml(c,isAdmin,isLeader){
-  var borderCls={pending:'c-red',replied:'c-orange',approved:'c-green'}[c.status]||'c-red';
-  var badgeCls={pending:'mb-red',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
-  var badgeTxt={pending:'🔴 미답변',replied:'🟠 승인대기',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
+  var borderCls={pending:'c-red',replied:'c-blue',approved:'c-green'}[c.status]||'c-red';
+  var badgeCls={pending:'mb-red',replied:'mb-blue',approved:'mb-green'}[c.status]||'mb-red';
+  var badgeTxt={pending:'🔴 미답변',replied:'🔵 답변완료',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
 
   var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(c.driver_name||c.driver_id)+'</span>':'';
 
-  // 사진 (Supabase URL + Teams 인라인 이미지)
+  // 사진
   var photos='';
   var imgs=c.image_urls||(c.image_urls===null?[]:c.image_urls)||[];
   if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
-  // raw_message HTML에서 Teams 인라인 이미지 URL 추출
-  var inlineImgUrls=[];
-  var rawHtml=c.raw_message||'';
-  var imgTagRe=/<img[^>]+src=["']([^"']+)["']/gi;
-  var mImg;
-  while((mImg=imgTagRe.exec(rawHtml))!==null){
-    if(mImg[1]&&!inlineImgUrls.includes(mImg[1]))inlineImgUrls.push(mImg[1]);
-  }
-  var allImgSources=[];
   if(imgs&&imgs.length>0){
-    imgs.forEach(function(item){
-      if(typeof item==='string')allImgSources.push({type:'url',url:item});
-      else if(item&&item.contentUrl)allImgSources.push({type:'sp',url:item.contentUrl,name:item.name||'사진'});
-    });
-  }
-  inlineImgUrls.forEach(function(u){allImgSources.push({type:'graph',url:u});});
-  if(allImgSources.length>0){
-    var msgId=c.teams_message_id||'';
-    var chatId=c.teams_channel_id||'';
-    var teamsUrl=chatId&&msgId?'https://teams.microsoft.com/l/message/'+encodeURIComponent(chatId)+'/'+encodeURIComponent(msgId):'';
-    photos='<div class="md-photos">';
-    allImgSources.forEach(function(src){
-      var uid='img-'+c.id+'-'+Math.random().toString(36).slice(2,7);
-      if(src.type==='url'){
-        photos+='<img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(\''+mdEsc(src.url)+'\')" onerror="this.style.display=\'none\'">';
-      } else if(src.type==='sp'){
-        var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
-        photos+='<span id="'+uid+'"><img class="md-photo" src="'+mdEsc(src.url)+'" onclick="mdViewPhoto(\''+mdEsc(src.url)+'\')" onerror="document.getElementById(\''+uid+'\').innerHTML=\''+fb.replace(/'/g,"\\'")+'\'"></span>';
-      } else if(src.type==='graph'){
-        var fb=teamsUrl?'<a class="md-photo-placeholder md-teams-ph" href="'+teamsUrl+'" target="_blank">📷</a>':'<span class="md-photo-placeholder">📷</span>';
-        photos+='<span id="'+uid+'" class="md-photo-placeholder" style="font-size:18px">⏳</span>';
-        (function(u2,i2,fb2){setTimeout(function(){loadGraphImage(i2,u2,fb2);},80);})(src.url,uid,fb);
-      }
-    });
-    photos+='</div>';
-  }
-
-  // 답변 섹션은 모달에서 처리
-  var replySec='';
-
-  return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'">'+
-    '<div onclick="mdOpenDetail('+c.id+')" style="cursor:pointer">'+
-      '<div class="md-top">'+
-        '<div>'+
-          '<div style="font-size:10px;color:#aaa;margin-bottom:3px">'+mdEsc(c.occurred_at||c.created_at.slice(0,10))+'</div>'+
-          '<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'">'+badgeTxt+'</span>'+
-        '</div>'+
-        driverTag+
-        '<span style="font-size:11px;color:#bbb;margin-left:4px">▶ 상세</span>'+
-      '</div>'+
-      '<div class="md-title">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
-      '<div class="md-row"><span class="md-key">운송장</span><span class="md-val">'+mdEsc(c.waybill_no||'-')+'</span></div>'+
-      '<div class="md-row"><span class="md-key">주소</span><span class="md-val">'+mdEsc(c.address||'-')+'</span></div>'+
-      photos+
-    '</div>'+
-    replySec+
-  '</div>';
-}
-
-
-// ── 오배송 상세 모달 ──────────────────────────────────────────────────
-function mdOpenDetail(caseId){
-  var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
-  if(!c)return;
-  var isAdmin=(CU&&CU.role==='admin');
-  var isLeader=(CU&&(CU.role==='leader'||CU.role==='sub'));
-  var isDriver=(CU&&!isAdmin&&!isLeader);
-
-  // 기사 이름 매핑 (driver_name 우선, 없으면 DB에서)
-  var drvName=c.driver_name||'';
-  if(!drvName&&c.driver_id){
-    var db=getDB();
-    var found=Object.values(db).find(function(d){return d&&(d.id===c.driver_id||d.coupang_id===c.driver_id);});
-    if(found)drvName=found.name;
-  }
-  if(!drvName)drvName=c.driver_id||'-';
-
-  // 날짜
-  var dateStr='';
-  try{dateStr=(c.occurred_at||c.created_at||'').slice(0,10);}catch(e){dateStr='-';}
-
-  // 사진
-  var imgs=c.image_urls||[];
-  if(typeof imgs==='string'){try{imgs=JSON.parse(imgs);}catch(e){imgs=[];}}
-  var photoHtml='';
-  if(imgs&&imgs.length>0){
-    photoHtml='<div style="margin-bottom:14px">'+
-      imgs.map(function(url){
-        return '<img src="'+mdEsc(url)+'" style="width:100%;border-radius:10px;object-fit:cover;margin-bottom:6px;cursor:pointer" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
+    photos='<div class="md-photos">'+
+      imgs.map(function(url,idx){
+        return '<img class="md-photo" src="'+mdEsc(url)+'" onclick="mdViewPhoto(\''+mdEsc(url)+'\')" onerror="this.style.display=\'none\'">';
       }).join('')+
     '</div>';
   }
 
-  var badgeCls={pending:'mb-red',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
-  var badgeTxt={pending:'🔴 미답변',replied:'🟠 승인대기',approved:'🟢 처리완료'}[c.status]||'🔴 미답변';
+  // 내용
+  var content=(c.issue_content||c.raw_message||'').slice(0,200);
+  var contentBox=content?'<div class="md-content">'+mdEsc(content)+'</div>':'';
 
   // 답변 섹션
-  var replyHtml='';
-  if((c.status==='pending'||c.status==='replied')&&isDriver){
-    replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
-      '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">💬 처리 내용 입력</div>'+
-      '<textarea id="md-ta-'+c.id+'" class="md-ta" placeholder="처리 내용을 입력하세요..." style="width:100%;min-height:80px;box-sizing:border-box"></textarea>'+
-      '<button class="md-send-btn" style="width:100%;margin-top:8px" onclick="mdSendReplyFromModal('+c.id+')">💬 답변 전송</button>'+
-    '</div>';
-  } else {
-    replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
-      '<div id="md-modal-reply-'+c.id+'"><div style="font-size:11px;color:#aaa;padding:8px 0">답변 로딩 중...</div></div>'+
-    '</div>';
-  }
-
-  var el=document.getElementById('md-detail-modal');
-  if(!el){el=document.createElement('div');el.id='md-detail-modal';document.body.appendChild(el);}
-  el.innerHTML='<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:24px;box-sizing:border-box;overflow-y:auto" onclick="if(event.target===this)document.getElementById(\'md-detail-modal\').style.display=\'none\'">'+
-    '<div style="background:#fff;border-radius:20px;padding:20px 16px 28px;width:calc(100% - 32px);max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin-bottom:24px;max-height:calc(90vh - 48px);overflow-y:auto">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
-        '<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>'+
-        '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\'" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1">✕</button>'+
-      '</div>'+
-      '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:12px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
-      '<div style="background:#e8f0fe;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:2">'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">1. 배송기사</span><span style="color:#1a237e;font-weight:700">'+mdEsc(drvName)+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">2. 운송장</span><span style="color:#1a1a1a">'+mdEsc(c.waybill_no||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">3. 라우트</span><span style="color:#1a1a1a">'+mdEsc(c.route||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">4. 주소</span><span style="color:#1a1a1a">'+mdEsc(c.address||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">5. 발생일</span><span style="color:#1a1a1a">'+mdEsc(dateStr)+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">6. 인입내용</span><span style="color:#1a1a1a">'+mdEsc(c.issue_content||'-')+'</span></div>'+
-      '</div>'+
-      photoHtml+
-      replyHtml+
-      ((isAdmin||isLeader)?
-        '<div style="margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
-          // 승인 버튼 - 기사 답변 있을 때만 활성화
-          (function(){
-            var hasReply=(c.status==='replied');
-            var apprStyle=hasReply
-              ?'width:100%;padding:11px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px'
-              :'width:100%;padding:11px;background:#e0e0e0;color:#aaa;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:not-allowed;margin-bottom:8px';
-            var apprLabel=hasReply?'✅ 승인 (팀즈답글 게시)':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
-            return '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>';
-          })()+
-          // 미전송완료 + 삭제 (관리자만)
-          (isAdmin?
-            '<div style="display:flex;gap:8px">'+
-              '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
-              '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
-            '</div>':'')+
-        '</div>':'')+
-    '</div>'+
-  '</div>';
-  el.style.display='block';
-
-  // 답변 비동기 로드
-  if(!((c.status==='pending'||c.status==='replied')&&isDriver)){
-    mdLoadModalReply(c.id,isAdmin,isLeader);
-  }
-}
-// 모달 내 답변 전송
-async function mdSendReplyFromModal(caseId){
-  await mdSendReply(caseId);
-  // 성공 후 모달 내용 갱신
-  var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
-  if(c){
-    var el=document.getElementById('md-detail-modal');
-    if(el&&el.style.display!=='none'){ mdOpenDetail(caseId); }
-  }
-}
-
-// 모달 내 답변 로드
-async function mdLoadModalReply(caseId,isAdmin,isLeader){
-  if(!sbClient)return;
-  var {data:replies}=await sbClient.from('misdelivery_replies')
-    .select('*').eq('case_id',caseId).order('created_at',{ascending:false}).limit(1);
-  var el=document.getElementById('md-modal-reply-'+caseId);
-  if(!el)return;
-  if(!replies||replies.length===0){
-    if(isDriver_||CU&&!isAdmin&&!isLeader){
-      el.innerHTML='';
-    } else {
-      el.innerHTML='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">아직 기사 답변이 없습니다.</div>';
+  var replySec='';
+  if(c.status==='pending'){
+    // 기사: 답변 입력창
+    if(!isAdmin&&!isLeader){
+      replySec='<div class="md-reply-sec">'+
+        '<textarea class="md-ta" id="md-ta-'+c.id+'" placeholder="처리 내용을 입력하세요..."></textarea>'+
+        '<button class="md-send-btn" onclick="mdSendReply('+c.id+')">💬 답변 전송</button>'+
+      '</div>';
     }
-    return;
+  } else if(c.status==='replied'){
+    // 답변 내용 보여주기 + 팀장/관리자는 승인 버튼
+    replySec='<div id="md-reply-box-'+c.id+'">'+mdReplyBox(c,isAdmin,isLeader)+'</div>';
+  } else if(c.status==='approved'){
+    replySec='<div id="md-reply-box-'+c.id+'">'+mdReplyBox(c,isAdmin,isLeader)+'</div>';
   }
-  var r=replies[0];
-  var caseData=_mdCases.find(function(c){return c.id===caseId;});
-  var caseStatus=caseData?caseData.status:'replied';
 
-  if((isAdmin||isLeader)&&r.approval_status==='pending'&&caseStatus==='replied'){
-    el.innerHTML='<div class="md-appr-box">'+
-      '<div class="md-appr-title">📋 기사 답변 — 승인 후 Teams 게시</div>'+
-      '<div class="md-appr-text">'+mdEsc(r.reply_text)+'</div>'+
-      '<div class="md-appr-btns">'+
-        '<button class="md-appr-ok" onclick="mdApproveReplyModal('+r.id+','+caseId+')">✅ 승인 → Teams 게시</button>'+
-        '<button class="md-appr-no" onclick="mdRejectReply('+r.id+','+caseId+')">↩ 재답변 요청</button>'+
+  return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'">'+
+    '<div class="md-top">'+
+      '<div>'+
+        '<div style="font-size:10px;color:#aaa;margin-bottom:3px">'+mdEsc(c.occurred_at||c.created_at.slice(0,10))+'</div>'+
+        '<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'">'+badgeTxt+'</span>'+
       '</div>'+
-    '</div>';
-  } else {
-    var modeText=r.posted_to_teams?'Teams 게시 완료 ✅':r.approval_status==='pending'?'팀장 승인 대기 ⏳':'처리됨';
-    el.innerHTML='<div class="md-replied">'+mdEsc(r.reply_text)+'<div class="md-replied-meta">'+mdEsc(r.replied_by)+' · '+modeText+'</div></div>';
-  }
-}
-
-// 모달 내 승인
-async function mdApproveReplyModal(replyId,caseId){
-  await mdApproveReply(replyId,caseId);
-  // 모달 갱신
-  var el=document.getElementById('md-detail-modal');
-  if(el&&el.style.display!=='none'){ mdOpenDetail(caseId); }
+      driverTag+
+    '</div>'+
+    '<div class="md-title">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
+    '<div class="md-row"><span class="md-key">운송장</span><span class="md-val">'+mdEsc(c.waybill_no||'-')+'</span></div>'+
+    '<div class="md-row"><span class="md-key">주소</span><span class="md-val">'+mdEsc(c.address||'-')+'</span></div>'+
+    photos+
+    contentBox+
+    replySec+
+  '</div>';
 }
 
 // ── 답변 박스 HTML ────────────────────────────────────────────────────
@@ -4682,20 +4346,17 @@ async function mdSendReply(caseId){
     // 2. 케이스 상태 → replied
     await sbClient.from('misdelivery_cases').update({status:'replied'}).eq('id',caseId);
 
-    // 3. 자동 모드: 바로 Teams 게시 + ack 댓글
+    // 3. 자동 모드: 바로 Teams 게시
     if(mode==='auto'){
       await mdPostToTeams(reply.id);
-    } else {
-      // 승인 모드: 접수 확인 댓글만 먼저 게시
-      mdPostTeamsAck(caseId);
     }
 
     // 4. 화면 업데이트
     var card=document.getElementById('md-card-'+caseId);
     if(card){
       var badge=document.getElementById('md-badge-'+caseId);
-      if(badge){badge.className='md-badge mb-orange';badge.textContent='🟠 승인대기';}
-      card.className='md-card c-orange';
+      if(badge){badge.className='md-badge mb-blue';badge.textContent='🔵 답변완료';}
+      card.className='md-card c-blue';
       var sec=card.querySelector('.md-reply-sec');
       if(sec){
         var teamsMsg=mode==='auto'?'Teams 자동 게시 완료 ✅':'팀장 승인 대기 ⏳';
@@ -4715,7 +4376,7 @@ async function mdSendReply(caseId){
   }
 }
 
-// ── Teams 게시 (답변 승인 후 원본글 댓글에 답변 게시) ────────────────
+// ── Teams 게시 ────────────────────────────────────────────────────────
 async function mdPostToTeams(replyId){
   try{
     var res=await fetch(SB_URL_MD+'/functions/v1/post-teams-reply',{
@@ -4726,19 +4387,6 @@ async function mdPostToTeams(replyId){
     var json=await res.json();
     if(!json.ok) console.warn('[mdPostToTeams]',json);
   }catch(e){console.error('[mdPostToTeams]',e);}
-}
-
-// ── Teams 접수 확인 댓글 ("전달하겠습니다") ───────────────────────────
-async function mdPostTeamsAck(caseId){
-  try{
-    var res=await fetch(SB_URL_MD+'/functions/v1/post-teams-reply',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN'},
-      body:JSON.stringify({case_id:caseId,ack:true,ack_text:'확인했습니다. 담당 기사에게 전달하겠습니다.'}),
-    });
-    var json=await res.json();
-    if(!json.ok) console.warn('[mdPostTeamsAck]',json);
-  }catch(e){console.error('[mdPostTeamsAck]',e);}
 }
 
 // ── 팀장 승인 ─────────────────────────────────────────────────────────
@@ -4771,12 +4419,6 @@ async function mdApproveReply(replyId,caseId){
         var replyTxt=txt?txt.textContent:'';
         box.innerHTML='<div class="md-replied">'+mdEsc(replyTxt)+'<div class="md-replied-meta">'+mdEsc(CU.name)+' 승인 · Teams 게시 완료 ✅</div></div>';
       }
-    }
-    // 기사에게 완료 알림 푸시
-    var caseDataAppr=_mdCases.find(function(c){return c.id===caseId;});
-    if(caseDataAppr){
-      mdPushToDriver(caseDataAppr.driver_name,'✅ 오배송 처리완료','팀장이 답변을 승인하고 Teams에 게시했습니다. 오배송 탭을 확인하세요.',caseId);
-      mdPushToLeaders('✅ 오배송 승인완료',CU.name+' 승인 처리 ('+( caseDataAppr.waybill_no||'')+')',caseId);
     }
     // 카운터 갱신
     await mdLoadCases();
@@ -4823,19 +4465,13 @@ function mdRenderModeBar(mode){
 }
 
 // ── 푸시 알림 헬퍼 (Supabase Edge Function 호출) ──────────────────────
-var MD_TEST_REDIRECT=null; // null=실제 기사에게 전송
 function mdPushToDriver(driverName,title,body,caseId){
-  var target=MD_TEST_REDIRECT||driverName;
-  if(MD_TEST_REDIRECT&&MD_TEST_REDIRECT!==driverName){
-    console.log('[TEST] 드라이버 푸시 리다이렉트:',driverName,'→',target);
-    title='[테스트/'+driverName+'] '+title;
-  }
   fetch(SB_URL_MD+'/functions/v1/send-push',{
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN'},
     body:JSON.stringify({
       title:title,body:body,
-      target_driver_name:target,
+      target_driver_name:driverName,
       data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'},
     }),
   }).catch(function(e){console.warn('[mdPushToDriver]',e);});
@@ -4851,49 +4487,6 @@ function mdPushToLeaders(title,body,caseId){
       data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'},
     }),
   }).catch(function(e){console.warn('[mdPushToLeaders]',e);});
-}
-
-// ── 최신 답변 승인 (모달 하단 버튼용) ────────────────────────────────
-async function mdApproveLatestReply(caseId){
-  if(!sbClient||!CU)return;
-  try{
-    var {data:replies}=await sbClient.from('misdelivery_replies')
-      .select('id').eq('case_id',caseId)
-      .eq('approval_status','pending')
-      .order('created_at',{ascending:false}).limit(1);
-    if(!replies||replies.length===0){alert('승인할 답변이 없습니다.');return;}
-    await mdApproveReply(replies[0].id,caseId);
-    document.getElementById('md-detail-modal').style.display='none';
-  }catch(e){console.error('[mdApproveLatestReply]',e);alert('승인 실패: '+e.message);}
-}
-
-// ── 미전송완료 처리 (관리자) ──────────────────────────────────────────
-async function mdMarkNotSent(caseId){
-  if(!sbClient||!CU)return;
-  if(!confirm('이 건을 "미전송완료"로 처리하시겠습니까?\n(Teams 게시 없이 완료 처리됩니다)'))return;
-  try{
-    await sbClient.from('misdelivery_cases').update({
-      status:'approved',
-      not_sent:true,
-      resolved_by:CU.name,
-      resolved_at:new Date().toISOString()
-    }).eq('id',caseId);
-    document.getElementById('md-detail-modal').style.display='none';
-    await mdLoadCases();
-  }catch(e){console.error('[mdMarkNotSent]',e);alert('처리 실패: '+e.message);}
-}
-
-// ── 케이스 삭제 (관리자) ──────────────────────────────────────────────
-async function mdDeleteCase(caseId){
-  if(!sbClient||!CU)return;
-  if(!confirm('이 오배송 건을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'))return;
-  try{
-    await sbClient.from('misdelivery_replies').delete().eq('case_id',caseId);
-    await sbClient.from('misdelivery_cases').delete().eq('id',caseId);
-    document.getElementById('md-detail-modal').style.display='none';
-    _mdCases=(_mdCases||[]).filter(function(c){return c.id!==caseId;});
-    mdRenderList(_mdCases);
-  }catch(e){console.error('[mdDeleteCase]',e);alert('삭제 실패: '+e.message);}
 }
 
 // ── 사진 전체화면 뷰어 ────────────────────────────────────────────────
@@ -5038,6 +4631,46 @@ function clearSchedLog(){
   _saveSchedLog([]);
   updateNavDots();
   document.getElementById('mc').innerHTML=pgSchedLog();
+}
+
+// ── 관리자: Supabase schedule_changes 에서 이력 동기화 ──────────────────
+async function _syncAdminSchedLog(){
+  if(!sbClient||!CU||CU.role!=='admin')return;
+  try{
+    var cutoff=new Date(Date.now()-7*24*60*60*1000).toISOString();
+    var r=await sbClient.from('schedule_changes')
+      .select('*').gte('changed_at',cutoff)
+      .order('changed_at',{ascending:false}).limit(300);
+    if(r.error||!r.data||r.data.length===0)return;
+    var log=_getSchedLog();
+    // 기존 이력 키셋 (중복 방지)
+    var existing=new Set(log.map(function(e){return e._key+'|'+(e.at||'').slice(0,16);}));
+    var added=0;
+    r.data.forEach(function(row){
+      var wd=(row.work_date||'').slice(0,10);
+      var dupKey=wd+'|'+(row.route||'')+'|'+(row.old_driver||'')+'|'+(row.new_driver||'');
+      var atMin=(row.changed_at||'').slice(0,16);
+      if(existing.has(dupKey+'|'+atMin))return;
+      log.push({
+        id:'sb_'+row.id,
+        at:row.changed_at||'',
+        workDate:wd,
+        route:row.route||'',
+        oldDriver:row.old_driver||'',
+        newDriver:row.new_driver||'',
+        changedBy:row.changed_by||'',
+        read:true,
+        _key:dupKey
+      });
+      added++;
+    });
+    if(added>0){
+      // 최신순 정렬 후 최대 200건 보관
+      log.sort(function(a,b){return (b.at||'')>(a.at||'')?1:-1;});
+      if(log.length>200)log=log.slice(0,200);
+      _saveSchedLog(log);
+    }
+  }catch(ex){console.warn('_syncAdminSchedLog',ex);}
 }
 
 function pgMySched(){
@@ -5461,7 +5094,7 @@ function saveEditCell(){
   closeEditCell();
   document.getElementById('mc').innerHTML=pgFullSched();
   // UI 갱신 완료 후 서버 저장 (비동기 — 완료/실패 토스트 표시)
-  sbSaveSchedOvr(key, newName);
+  sbSaveSchedOvr(key, newName, orig);
 }
 
 // ── SETTLEMENT ────────────────────────────────────────────────────────
