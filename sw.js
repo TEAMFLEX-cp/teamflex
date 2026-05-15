@@ -1,7 +1,7 @@
 // TeamFlex Service Worker v18 — 백그라운드 스케줄 체크 + Push 알림
-const CACHE_NAME = 'teamflex-v99';
-const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
-const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
+const CACHE_NAME = 'teamflex-test-v1';
+const SB_URL = 'https://dxayedxtlrnunmwqwgjr.supabase.co';
+const SB_KEY = 'sb_publishable_pQWFyirpU7tFI8nkrxOAAA_vJXFH9O5';
 
 // ── 설치 / 활성화 ─────────────────────────────────────────────────────────────
 self.addEventListener('install', () => self.skipWaiting());
