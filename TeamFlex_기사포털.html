@@ -5530,7 +5530,7 @@ async function loadFreshStatus(){
     var routeShort=(r.route||'-').replace(/^.*_/,'');
     return '<tr style="background:'+bg+'">'+
       '<td style="padding:8px 6px;font-weight:600;color:#1b5e20">'+escHtml(routeShort)+'</td>'+
-r;color:#1565c0;font-weight:700">'+(r.total||0)+'</td>'+
+      '<td style="padding:8px 6px;text-align:center;color:#1565c0;font-weight:700">'+(r.total||0)+'</td>'+
       '<td style="padding:8px 6px;text-align:center;color:#6a1b9a">'+(r.scanned||0)+'</td>'+
       '<td style="padding:8px 6px;text-align:center;color:#2e7d32;font-weight:600">'+(r.completed||0)+'</td>'+
       '<td style="padding:8px 6px;text-align:center;'+undelClr+'">'+(r.undelivered||0)+'</td>'+
