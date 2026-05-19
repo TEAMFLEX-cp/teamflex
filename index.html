@@ -1086,7 +1086,7 @@ async function schedRefresh(){
     if(ovrChg)saveSchedOvr(ovr);
     // ── 화면 직접 갱신 (의존성 없이 안전하게) ───────────────────────
     var mc=document.getElementById('mc');
-    if(mc){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}
+    if(mc&&(CUR_TAB==='as'||CUR_TAB==='fs')){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}
     showToast('✅ 새로고침 완료 ('+r.data.length+'행)',true);
     if(btn){btn.disabled=false;btn.textContent='🔄 새로고침';}
   }catch(ex){
@@ -1675,13 +1675,18 @@ loadAdminCfgFromSB().then(function(){
   return syncFromSupabase();
 }).then(function(){
   console.log('Supabase 동기화 완료');
+  // 스케줄도 함께 로드 (백그라운드, 탭 이동 전에 미리 준비)
+  schedRefresh().catch(function(e){console.warn('schedRefresh startup 오류',e);});
   _reRenderCurTab();
 }).catch(function(e){console.warn('동기화 실패',e);_reRenderCurTab();});
 
 // ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&sbClient){
-    syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
+    syncFromSupabase().then(function(){
+      schedRefresh().catch(function(){});
+      _reRenderCurTab();
+    }).catch(function(){});
   }
 });
 
@@ -1790,7 +1795,7 @@ function openCfgSubMenu(){
   sheet.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;justify-content:flex-end;animation:fadeIn .15s';
   sheet.innerHTML=
     '<div onclick="closeCfgSubMenu()" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
-    '<div style="background:#fff;border-radius:24px 24px 0 0;padding:20px 20px 36px;box-shadow:0 -4px 24px rgba(0,0,0,.15);animation:slideUp .2s">'+
+    '<div style="background:#fff;border-radius:24px 24px 0 0;padding:20px 20px 36px;box-shadow:0 -4px 24px rgba(0,0,0,.15);animation:slideUp .2s;max-height:78vh;overflow-y:auto">'+
       '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px"></div>'+
       '<div style="font-size:16px;font-weight:900;color:#1a237e;margin-bottom:18px;text-align:center">&#x2699;&#xFE0F; 관리 메뉴</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px">'+
@@ -2913,11 +2918,11 @@ function go(tab){
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
   else if(tab==='fs'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient)schedRefresh();},300);}
-  else if(tab==='st'){mc.innerHTML=pgSettle();mc.scrollTop=0;window.scrollTo(0,0);}
+  else if(tab==='st'){mc.innerHTML=pgSettle();mc.scrollTop=0;window.scrollTo(0,0);if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='st'){mc.innerHTML=pgSettle();mc.scrollTop=0;}}).catch(function(){});}
   else if(tab==='aa')mc.innerHTML=pgApproval();
   else if(tab==='ab')mc.innerHTML=pgAnn(true);
   else if(tab==='as'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient)schedRefresh();},300);}
-  else if(tab==='az')mc.innerHTML=pgAdminSettle();
+  else if(tab==='az'){mc.innerHTML=pgAdminSettle();if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='az')mc.innerHTML=pgAdminSettle();}).catch(function(){});}
   else if(tab==='ap')mc.innerHTML=pgPermissions();
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
   else if(tab==='cfg')mc.innerHTML=pgSettings();
