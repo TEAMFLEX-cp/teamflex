@@ -99,9 +99,9 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .pcard h2{font-size:20px;font-weight:800;color:#1a237e;margin-bottom:8px}
 .pcard p{font-size:14px;color:#666;line-height:1.6;margin-bottom:20px}
 .btn-s{background:#e8eaf6;color:#3949ab;border:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
-.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;display:flex;align-items:flex-end;justify-content:center}
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10100;display:flex;align-items:flex-end;justify-content:center}
 .modal-sheet{background:#fff;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:500px;animation:su .3s ease;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.modal-mid{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-mid{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10100;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal-box{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:460px;max-height:85vh;overflow-y:auto}
 @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -324,7 +324,7 @@ textarea.ann-input:focus{border-color:#1565c0}
 .md-compact-info{font-size:10px;color:#aaa}
 .md-compact-title{font-size:13px;font-weight:800;color:#1a237e;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .md-compact-sub{font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.md-popup-back{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:flex-end;justify-content:center}
+.md-popup-back{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:10100;display:flex;align-items:flex-end;justify-content:center}
 .md-popup-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
 .md-popup-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid #f0f0f0;flex-shrink:0}
 .md-popup-title{font-size:15px;font-weight:800;color:#1a237e}
@@ -1823,7 +1823,7 @@ function openCfgSubMenu(){
   var old=document.getElementById('cfg-sub-sheet');if(old)old.remove();
   var sheet=document.createElement('div');
   sheet.id='cfg-sub-sheet';
-  sheet.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;justify-content:flex-end;animation:fadeIn .15s';
+  sheet.style.cssText='position:fixed;inset:0;z-index:10100;display:flex;flex-direction:column;justify-content:flex-end;animation:fadeIn .15s';
   sheet.innerHTML=
     '<div onclick="closeCfgSubMenu()" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
     '<div style="background:#fff;border-radius:24px 24px 0 0;padding:20px 20px 36px;box-shadow:0 -4px 24px rgba(0,0,0,.15);animation:slideUp .2s;max-height:78vh;overflow-y:auto">'+
@@ -5619,7 +5619,7 @@ function pgMisdelivery(){
 
   // 오배송 키워드 팝업
   var mdKwPopup=isAdmin?
-    '<div id="md-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">'+
+    '<div id="md-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
     '<div style="background:#fff;border-radius:16px;padding:20px;width:88%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
     '<span style="font-size:15px;font-weight:700;color:#b71c1c">🔍 오배송 감지 키워드</span>'+
@@ -6820,7 +6820,7 @@ function pgFresh(){
     '<div id="fr-summary" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>'+
     '<div id="fr-table"><div style="text-align:center;padding:32px;color:#888">&#x23F3; 로딩 중...</div></div>'+
     // ── 신선 키워드 팝업 ──
-    '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">'+
+    '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
     '<div style="background:#fff;border-radius:16px;padding:20px;width:88%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
     '<span style="font-size:15px;font-weight:700;color:#1b5e20">&#x1F33F; 신선 트리거 키워드</span>'+
