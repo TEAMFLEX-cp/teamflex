@@ -1563,9 +1563,32 @@ function startRealtime(){
         );
       }
     })
+    // ⑤ 기능 제어 설정 변경 (app_settings — feature_controls)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'app_settings'},function(payload){
+      if(Date.now()-_rtStartTs<2000)return;
+      var row=payload.new||{};
+      if(row.key==='feature_controls'){
+        console.log('[Realtime] feature_controls 변경 감지 → 재로드');
+        loadFeatureControls().then(function(){applyFeatureCtrlToUI();});
+      }
+    })
     .subscribe(function(status){
       console.log('[Realtime] 구독 상태:',status);
     });
+}
+
+// feature_controls 변경 시 현재 탭 UI 즉시 갱신
+function applyFeatureCtrlToUI(){
+  var mc=document.getElementById('mc');
+  if(!mc||!CU)return;
+  // 현재 탭을 다시 렌더링하여 활성/비활성 즉시 반영
+  var isAdm=CU.role==='admin';
+  var needRefresh=false;
+  var feats={md:'misdelivery',fr:'fresh',sl:'sched',nc:'ann',ab:'ann',fs:'schedule',as:'schedule',st:'settle',az:'settle',er:'emergency'};
+  var feat=feats[CUR_TAB];
+  if(feat&&!isAdm&&!getFeatureCtrl(feat,'active'))needRefresh=true;
+  if(feat&&!isAdm&&getFeatureCtrl(feat,'active'))needRefresh=true; // 재활성화됐을 때도 갱신
+  if(needRefresh){go(CUR_TAB);}
 }
 // 날짜 포맷 헬퍼: "2026-05-04" → "5월 4일"
 function _fmtSchedDate(d){
@@ -2541,8 +2564,11 @@ function launchApp(){
   // Supabase Realtime 구독 시작
   setTimeout(startRealtime, 1000);
   setTimeout(mdStartRealtime, 1200);
-  // 기능 활성화/알림 제어 설정 로드
+  // 기능 활성화/알림 제어 설정 로드 + 5분 주기 폴링 (Realtime 미지원 환경 fallback)
   loadFeatureControls();
+  setInterval(function(){
+    loadFeatureControls().then(function(){applyFeatureCtrlToUI();});
+  }, 5*60*1000);
   // 안드로이드 뒤로가기 인터셉트: 초기 history state 삽입
   window.history.pushState({tab:'hm',ts:Date.now()},'');
 }
