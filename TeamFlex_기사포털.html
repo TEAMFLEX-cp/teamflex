@@ -4070,11 +4070,11 @@ function renderSettleDetail(s){
   // Revenue table (exact Excel format)
   var hdrLine=s.header||'';
   var revRows=s.revenue_rows||[];
+  var ell='overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
   var revTbody=revRows.map(function(r){
     var qtyFmt=r.qty?r.qty.toLocaleString('ko-KR'):'-';
     var priceFmt=r.price?fmt(r.price)+'원':'-';
     var subFmt=r.subtotal?fmt(r.subtotal)+'원':'-';
-    var ell='overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
     return '<tr>'+
       '<td style="text-align:left;font-weight:600;word-break:keep-all;white-space:normal;line-height:1.25;font-size:11px;padding:4px 2px 4px 4px">'+r.name+
         '<div style="font-size:9px;color:#5c6bc0;margin-top:1px">'+r.type+'</div></td>'+
