@@ -1312,12 +1312,12 @@ async function saveFeatureCtrl(feat, key, val){
   _featureControls[feat][key] = val;
   // Supabase 저장 (실패 시 롤백 + 에러 알림)
   var sbRes = await sbClient.from('app_settings').upsert(
-    {key:'feature_controls', value:JSON.stringify(_featureControls), updated_at:new Date().toISOString()},
+    {key:'feature_controls', value:JSON.stringify(_featureControls)},
     {onConflict:'key'}
   );
-  if(sbRes.error){
+  if(sbRes && sbRes.error){
     console.error('[FeatureCtrl] 저장 실패:', sbRes.error);
-    showToast('⚠ 설정 저장 실패 — 연결 상태 확인 후 재시도하세요', false);
+    showToast('⚠ 기능 설정 저장 실패: '+sbRes.error.message, false);
     // 메모리 값 롤백
     _featureControls[feat][key] = !val;
     return;
@@ -4746,30 +4746,50 @@ function deleteAnn(id){
 }
 // 공지 비활성화 (admin 전용) — 로컬+Supabase expire_at 과거로 설정
 function disableAnn(id){
-  var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
+  var anns=getAnns();var a=anns.find(function(x){return String(x.id)===String(id);});
   if(!a)return;
   a.disabled=true;
   // expire_at을 1초 전으로 설정해 Supabase sync에서도 만료로 인식
   a.expireAt=new Date(Date.now()-1000).toISOString();
   localStorage.setItem('tfann',JSON.stringify(anns));
-  if(sbClient&&a.sb_id){
-    sbClient.from('announcements').update({expire_at:a.expireAt}).eq('id',a.sb_id)
-      .then(function(){}).catch(function(e){console.warn('[disableAnn SB]',e);});
+  var sbId=a.sb_id||a.id; // sb_id 없으면 id 폴백
+  if(sbClient&&sbId){
+    sbClient.from('announcements').update({expire_at:a.expireAt}).eq('id',sbId)
+      .then(function(r){
+        if(r&&r.error){
+          console.warn('[disableAnn SB]',r.error);
+          showToast('⚠ 비활성화 저장 실패: '+r.error.message,false);
+        }else{
+          showToast('✅ 비활성화 저장됨',true);
+        }
+      })
+      .catch(function(e){console.warn('[disableAnn SB]',e);showToast('⚠ 비활성화 저장 실패',false);});
+  }else{
+    showToast('⚠ 비활성화: Supabase ID 없음 — 새로고침 후 다시 시도',false);
   }
   go(CU.role==='admin'?'ab':'nc');
 }
 // 공지 재게시 (admin 전용) — 30일 연장 + Supabase 동기화
 function enableAnn(id){
-  var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
+  var anns=getAnns();var a=anns.find(function(x){return String(x.id)===String(id);});
   if(!a)return;
   a.disabled=false;
   var newExpire=new Date(Date.now()+30*24*60*60*1000).toISOString();
   a.expireAt=newExpire;
   a.expireDays=30;
   localStorage.setItem('tfann',JSON.stringify(anns));
-  if(sbClient&&a.sb_id){
-    sbClient.from('announcements').update({expire_at:newExpire}).eq('id',a.sb_id)
-      .then(function(){}).catch(function(e){console.warn('[enableAnn SB]',e);});
+  var sbId=a.sb_id||a.id;
+  if(sbClient&&sbId){
+    sbClient.from('announcements').update({expire_at:newExpire}).eq('id',sbId)
+      .then(function(r){
+        if(r&&r.error){
+          console.warn('[enableAnn SB]',r.error);
+          showToast('⚠ 재게시 저장 실패: '+r.error.message,false);
+        }else{
+          showToast('✅ 재게시됨 (30일 연장)',true);
+        }
+      })
+      .catch(function(e){console.warn('[enableAnn SB]',e);showToast('⚠ 재게시 저장 실패',false);});
   }
   go(CU.role==='admin'?'ab':'nc');
 }
