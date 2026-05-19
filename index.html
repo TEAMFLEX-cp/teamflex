@@ -4390,7 +4390,7 @@ function pgAdminSettle(){
   var all=[];
   Object.entries(SM).forEach(function(kv){
     var name=kv[0];var smData=kv[1];
-    if(smData[String(SETTLE_ADMIN_MONTH)]){all.push(smData[String(SETTLE_ADMIN_MONTH)]);}
+    if(smData[String(SETTLE_ADMIN_MONTH)]){all.push(Object.assign({name:name},smData[String(SETTLE_ADMIN_MONTH)]));}
   });
   all.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
   var total=all.reduce(function(s,d){return s+(d.net_pay||0);},0);
@@ -4605,7 +4605,7 @@ function pgAdminSettle(){
   Object.entries(SM).forEach(function(kv){
     var name=kv[0];var smData=kv[1];
     if(smData[String(SETTLE_ADMIN_MONTH)]){
-      all.push(smData[String(SETTLE_ADMIN_MONTH)]);
+      all.push(Object.assign({name:name},smData[String(SETTLE_ADMIN_MONTH)]));
     }
   });
   all=all.filter(function(d){return d&&d.name;});
