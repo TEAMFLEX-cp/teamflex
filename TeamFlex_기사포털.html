@@ -3732,9 +3732,12 @@ function pgFullSched(){
   var wk=AW[SCHED_WK];var ovr=getSchedOvr();var today=todStr();
   var keys=getWeekKeys();var idx=keys.indexOf(SCHED_WK);
   var prevDis=idx<=0?'disabled':'';var nextDis=idx>=keys.length-1?'disabled':'';
+  var curWk=findCurWeek();
+  var todayBtn=SCHED_WK!==curWk?'<button onclick="SCHED_WK=\''+curWk+'\';EDIT_MODE=false;document.getElementById(\'mc\').innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},200);" style="background:#e53935;color:#fff;border:none;border-radius:20px;padding:5px 13px;font-size:12px;font-weight:800;cursor:pointer;margin-left:6px;white-space:nowrap;">당일</button>':'';
   var nav='<div class="wk-nav">'+
     '<button class="wk-btn" '+prevDis+' onclick="moveSchedWeek(-1)">&#x276E;</button>'+
     '<div class="wk-nav-lbl">'+weekLabel(SCHED_WK)+'</div>'+
+    todayBtn+
     '<button class="wk-btn" '+nextDis+' onclick="moveSchedWeek(1)">&#x276F;</button>'+
     '</div>';
   var editBtn='';
@@ -3801,7 +3804,9 @@ function pgFullSched(){
     var hdr='<th class="rth">라우트</th>';
     for(var di=0;di<wk.dl.length;di++){
       var cc=colClasses[di];
-      hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+wk.dl[di]+'</th>';
+      var isTod=(di===todayColIdx);
+      var todBadge=isTod?'<div style="font-size:10px;color:#e53935;font-weight:800;line-height:1.2;margin-top:2px">&#x1F4CD; 오늘</div>':'';
+      hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+wk.dl[di]+todBadge+'</th>';
     }
     var rows='';
     for(var ri=0;ri<g.rt.length;ri++){
