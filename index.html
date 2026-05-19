@@ -3554,7 +3554,7 @@ function pgAnn(isAdmin){
   var isAdm=CU&&CU.role==='admin';
   if(!getFeatureCtrl('ann','active')&&!isAdm){
     return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="stit" style="margin-bottom:0">&#x1F4E2; 공지사항</div></div>'+
-      '<div class="empty"><div class="ei">&#x1F512;</div><p>관리자에 의해 비활성화된 기능입니다.</p></div>';
+      '<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0"><div style="font-size:52px;margin-bottom:16px">&#x1F512;</div><div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">기능이 잠겼습니다</div><div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div></div>';
   }
   var anns=getAnns();
   var writeBtn=canAnn()?'<button class="btn-ok" style="margin-bottom:14px" onclick="openAnnWrite()">&#x270F; 공지 작성</button>':'';
@@ -3880,7 +3880,7 @@ function pgSchedLog(){
       '<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0">'+
         '<div style="font-size:52px;margin-bottom:16px">&#x1F512;</div>'+
         '<div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">변경이력 기능이 잠겼습니다</div>'+
-        '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>문의사항은 관리자에게 연락해 주세요.</div>'+
+        '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
   var isAdmin=CU.role==='admin';
@@ -4086,7 +4086,7 @@ function colClass(di,todIdx){
 function pgFullSched(){
   var isAdm=CU&&CU.role==='admin';
   if(!getFeatureCtrl('schedule','active')&&!isAdm){
-    return _featureBar('schedule')+'<div class="empty"><div class="ei">&#x1F512;</div><p>관리자에 의해 비활성화된 기능입니다.</p></div>';
+    return _featureBar('schedule')+'<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0"><div style="font-size:52px;margin-bottom:16px">&#x1F512;</div><div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">기능이 잠겼습니다</div><div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div></div>';
   }
   if(!SCHED_WK)SCHED_WK=findCurWeek();
   var wk=AW[SCHED_WK];var ovr=getSchedOvr();var today=todStr();
@@ -4325,7 +4325,7 @@ function pgSettle(){
   var isAdm=CU&&CU.role==='admin';
   if(!getFeatureCtrl('settle','active')&&!isAdm){
     return '<div class="stit">&#x1F4B0; 정산 현황</div>'+
-      '<div class="empty"><div class="ei">&#x1F512;</div><p>관리자에 의해 비활성화된 기능입니다.</p></div>';
+      '<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0"><div style="font-size:52px;margin-bottom:16px">&#x1F512;</div><div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">기능이 잠겼습니다</div><div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div></div>';
   }
   var sm=SM[CU.name];
   if(!sm||Object.keys(sm).length===0){
@@ -5506,7 +5506,7 @@ function checkContactsPw(){
 function pgEmergencyContact(){
   var isAdm=CU&&CU.role==='admin';
   if(!getFeatureCtrl('emergency','active')&&!isAdm){
-    return _featureBar('emergency')+'<div class="empty"><div class="ei">&#x1F512;</div><p>관리자에 의해 비활성화된 기능입니다.</p></div>';
+    return _featureBar('emergency')+'<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0"><div style="font-size:52px;margin-bottom:16px">&#x1F512;</div><div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">기능이 잠겼습니다</div><div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div></div>';
   }
   var db=getDB();
   var canManage=(CU.role==='admin'||CU.role==='leader');
@@ -5903,7 +5903,7 @@ function pgMisdelivery(){
       '<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #ffcdd2">'+
         '<div style="font-size:52px;margin-bottom:16px">&#x1F512;</div>'+
         '<div style="font-size:17px;font-weight:800;color:#c62828;margin-bottom:10px">오배송 기능이 잠겼습니다</div>'+
-        '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>문의사항은 관리자에게 연락해 주세요.</div>'+
+        '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
   var isAdmin=CU.role==='admin';
@@ -6810,486 +6810,168 @@ async function mdDeleteCase(caseId){
   if(!sbClient||!CU)return;
   if(!confirm('이 오배송 건을 삭제하시겠습니까?\n삭제 후 Teams에서 같은 메시지가 다시 감지되어도 재등록되지 않습니다.'))return;
   try{
-    // 소프트 삭제: status='deleted'로 표시 (hard DELETE 시 teams_poller가 재삽입함)
-    var {error}=await sbClient.from('misdelivery_cases')
-      .update({status:'deleted',archived_at:new Date().toISOString()})
-      .eq('id',caseId);
-    if(error)throw error;
-    var modal=document.getElementById('md-detail-modal');
-    if(modal)modal.style.display='none';
-    _mdCases=(_mdCases||[]).filter(function(c){return c.id!==caseId;});
-    mdRenderList(_mdCases);
+    // 소프트 삭제: status='deleted'로 표시 (hard DELETE 시 te
+    // 소프트 삭제: status='deleted'로 표시
+    await sbClient.from('misdelivery_cases').update({
+      status:'deleted', resolved_by:CU.name, resolved_at:new Date().toISOString()
+    }).eq('id',caseId);
+    document.getElementById('md-detail-modal').style.display='none';
+    await mdLoadCases();
   }catch(e){console.error('[mdDeleteCase]',e);alert('삭제 실패: '+e.message);}
 }
 
-// ── 사진 전체화면 뷰어 ────────────────────────────────────────────────
-function mdViewPhoto(url){
-  var back=document.createElement('div');
-  back.className='md-viewer-back';
-  var img=document.createElement('img');
-  img.className='md-viewer-img';
-  img.src=mdEsc(url);
-  img.style.cssText='transform-origin:center center;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none';
-  var closeBtn=document.createElement('button');
-  closeBtn.className='md-viewer-close';
-  closeBtn.innerHTML='&#x2715;';
-  closeBtn.onclick=function(){if(back.parentNode)back.parentNode.removeChild(back);};
-  back.appendChild(img);back.appendChild(closeBtn);
-  back.onclick=function(e){if(e.target===back&&back.parentNode)back.parentNode.removeChild(back);};
-  document.body.appendChild(back);
-  var sc=1,lsc=1,sd=0,tx=0,ty=0,smx=0,smy=0,lastTap=0;
-  function applyT(){img.style.transform='translate('+tx+'px,'+ty+'px) scale('+sc+')';}
-  img.addEventListener('touchstart',function(e){
-    if(e.touches.length===2){sd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);lsc=sc;e.preventDefault();}
-    else if(e.touches.length===1){var n=Date.now();if(n-lastTap<300){sc=sc>1?1:2.5;tx=0;ty=0;applyT();}lastTap=n;smx=e.touches[0].clientX-tx;smy=e.touches[0].clientY-ty;e.preventDefault();}
-  },{passive:false});
-  img.addEventListener('touchmove',function(e){
-    if(e.touches.length===2){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);sc=Math.min(5,Math.max(1,lsc*(d/sd)));applyT();e.preventDefault();}
-    else if(e.touches.length===1&&sc>1){tx=e.touches[0].clientX-smx;ty=e.touches[0].clientY-smy;applyT();e.preventDefault();}
-  },{passive:false});
-  img.addEventListener('touchend',function(){if(sc<1.05){sc=1;tx=0;ty=0;applyT();}});
-  img.addEventListener('wheel',function(e){e.preventDefault();sc=Math.min(5,Math.max(1,sc*(e.deltaY<0?1.15:0.87)));if(sc<=1){tx=0;ty=0;}applyT();},{passive:false});
-}
+// ══════════════════════════════════════════════════════════════════════
+// ── 신선 탭 ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
 
-// ── XSS 방지 이스케이프 ───────────────────────────────────────────────
-function mdEsc(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Realtime: 오배송 케이스 실시간 업데이트 ───────────────────────────
-function mdStartRealtime(){
-  if(!sbClient||!CU)return;
-  sbClient.channel('misdelivery-realtime')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'misdelivery_cases'},function(payload){
-      var c=payload.new||{};
-      var isDriver=CU.role!=='admin'&&CU.role!=='leader'&&CU.role!=='sub';
-      if(isDriver){var dfId2=CU.id&&CU.id.indexOf('@df')<0?CU.id+'@df':CU.id;var baseId2=CU.id&&CU.id.endsWith('@df')?CU.id.replace('@df',''):CU.id;if(c.driver_id!==CU.id&&c.driver_id!==dfId2&&c.driver_id!==baseId2)return;}
-      if(CUR_TAB==='md'){mdLoadCases();}
-    })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'misdelivery_cases'},function(payload){
-      if(CUR_TAB==='md'){mdLoadCases();}
-    })
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'misdelivery_replies'},function(payload){
-      if(CUR_TAB==='md'){mdLoadCases();}
-    })
-    .subscribe();
-}
-
-// ── KEYWORD SETTINGS PAGE ──────────────────────────────────────────────────────
-function pgKeywordSettings(){
-  // 오배송 키워드만 — 신선 키워드는 신선 탭에서 관리
-  return '<div class="stit">&#x1F50D; 키워드 설정</div>'+
-    '<div class="card">'+
-    '<div class="ctit">&#x26A0; 오배송 감지 키워드</div>'+
-    '<div style="font-size:12px;color:#757575;margin-bottom:12px">Teams 메시지에서 이 키워드가 감지되면 자동으로 오배송 케이스가 등록됩니다.</div>'+
-    '<div id="kw-misdelivery"></div>'+
-    '<div style="display:flex;gap:8px;margin-top:10px">'+
-    '<input id="kw-misdelivery-input" type="text" placeholder="키워드 입력" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px">'+
-    '<button onclick="saveKeyword(\'misdelivery\')" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button>'+
-    '</div>'+
-    '</div>';
-}
-
-var _kwData={misdelivery:[],fresh:[]};
-async function loadKeywords(){
-  if(!sbClient){
-    // 기본값 표시
-    _kwData={misdelivery:['배송 장소 상이','회수 필요'],fresh:['2회전 예상','2차 예상']};
-    renderKeywords();return;
-  }
-  var {data,error}=await sbClient.from('poller_config').select('*');
-  if(!error&&data){
-    data.forEach(function(r){
-      if(r.key==='misdelivery_keywords') try{_kwData.misdelivery=JSON.parse(r.value);}catch(e){}
-      if(r.key==='fresh_keywords') try{_kwData.fresh=JSON.parse(r.value);}catch(e){}
-    });
-  }
-  renderKeywords();
-}
-
-function renderKeywords(){
-  ['misdelivery','fresh'].forEach(function(type){
-    var box=document.getElementById('kw-'+type);
-    if(!box)return;
-    var clr=type==='misdelivery'?'#e53935':'#2e7d32';
-    if(!_kwData[type]||_kwData[type].length===0){
-      box.innerHTML='<div style="color:#9e9e9e;font-size:13px;padding:8px 0">등록된 키워드 없음</div>';return;
-    }
-    box.innerHTML=_kwData[type].map(function(kw,i){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:8px 10px;background:#f5f5f5;border-radius:6px">'+
-        '<span style="font-size:13px;color:'+clr+'">&#x1F3F7; '+escHtml(kw)+'</span>'+
-        '<button onclick="deleteKeyword(\''+type+'\','+i+')" style="padding:3px 8px;background:#ef5350;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">삭제</button>'+
-        '</div>';
-    }).join('');
-  });
-}
-
-async function saveKeyword(type){
-  var input=document.getElementById('kw-'+type+'-input');
-  if(!input||!input.value.trim())return;
-  var kw=input.value.trim();
-  if(_kwData[type].indexOf(kw)>=0){alert('이미 등록된 키워드입니다.');return;}
-  _kwData[type].push(kw);
-  input.value='';
-  await _saveKwToSupabase(type);
-  renderKeywords();
-}
-
-async function deleteKeyword(type,idx){
-  _kwData[type].splice(idx,1);
-  await _saveKwToSupabase(type);
-  renderKeywords();
-}
-
-async function _saveKwToSupabase(type){
-  if(!sbClient)return;
-  var key=type==='misdelivery'?'misdelivery_keywords':'fresh_keywords';
-  await sbClient.from('poller_config').upsert({key:key,value:JSON.stringify(_kwData[type])},{onConflict:'key'});
-}
-
-// ─── 2회전 예상 배너 ──────────────────────────────────────────────
-var _r2EndHour = 20;
-var _r2SettingsLoaded = false;
-
-async function loadR2Settings(){
-  if(!sbClient) return;
-  try {
-    var r = await sbClient.from('app_settings').select('value').eq('key','round2_end_hour').single();
-    if(r.data && r.data.value) _r2EndHour = parseInt(r.data.value)||20;
-  } catch(e){}
-  _r2SettingsLoaded = true;
-}
-async function loadR2EndHour(){ await loadR2Settings(); }
-
-async function loadRound2Banner(){
-  var banner = document.getElementById('fr-round2-banner');
-  if(!banner) return;
-  if(!sbClient){ banner.style.display='none'; return; }
-
-  if(!_r2SettingsLoaded) await loadR2Settings();
-
-  var now     = new Date();
-  var nowHour = now.getHours();
-  var today   = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-
-  // 오늘 데이터 조회
-  var res = await sbClient.from('round2_expected').select('*')
-    .eq('shared_date', today).order('driver_id',{ascending:true}).order('route',{ascending:true});
-  var rows = res.data || [];
-  if(rows.length === 0){ banner.style.display='none'; return; }
-
-  // 오늘 데이터가 있으면 모든 역할에게 항상 표시 (마감시간 이후엔 정보만 표시)
-  var sharedAt = rows[0].shared_at ? new Date(rows[0].shared_at) : null;
-  var sharedTimeStr = sharedAt ? sharedAt.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
-  var endStr = _r2EndHour+':00';
-  var isPastDeadline = (nowHour >= _r2EndHour);
-
-  // 기사별 그룹핑
-  var driverOrder = [], driverMap = {};
-  rows.forEach(function(r){
-    var did = r.driver_id;
-    if(!driverMap[did]){
-      driverMap[did] = {name:r.driver_name||r.driver_id, routes:[], totalFresh:0, totalSame:0, totalQty:0, role:'driver'};
-      driverOrder.push(did);
-    }
-    driverMap[did].routes.push(r);
-    driverMap[did].totalFresh += (r.fresh_qty||0);
-    driverMap[did].totalSame  += (r.samedaydel_qty||0);
-    driverMap[did].totalQty   += (r.qty||0);
-  });
-
-  // drivers 테이블에서 role 매핑 (한국어 이름 기준)
-  try {
-    var drRes = await sbClient.from('drivers').select('name,role');
-    if(drRes.data){
-      var roleByName = {};
-      drRes.data.forEach(function(d){ if(d.name) roleByName[d.name]=d.role||'driver'; });
-      driverOrder.forEach(function(did){
-        var dn=driverMap[did].name;
-        if(dn && roleByName[dn]) driverMap[did].role=roleByName[dn];
-      });
-    }
-  } catch(e){}
-
-  // 팝업용 정렬 저장
-  var roleW = {admin:0,leader:1,sub:2,driver:3};
-  var sortedOrder = driverOrder.slice().sort(function(a,b){
-    var wa=roleW[driverMap[a].role]||3, wb=roleW[driverMap[b].role]||3;
-    if(wa!==wb) return wa-wb;
-    return (driverMap[a].name||'').localeCompare(driverMap[b].name||'','ko');
-  });
-  window._r2SortedOrder   = sortedOrder;
-  window._r2DriverMap     = driverMap;
-  window._r2SharedTimeStr = sharedTimeStr;
-  window._r2EndStr        = endStr;
-
-  // 본인 데이터 찾기 (이름 기준)
-  var myName     = (CU && CU.name) ? CU.name.trim() : '';
-  var myDriverId = driverOrder.find(function(did){
-    var d = driverMap[did];
-    return d && d.name && d.name.trim()===myName;
-  });
-
-  // ── 배너 렌더 (모든 역할에게 표시) ──
-  banner.style.display = 'block';
-  // 마감 후에는 배너 배경을 회색조로 변경
-  if(isPastDeadline){
-    banner.style.background='linear-gradient(135deg,#37474f,#546e7a)';
-  } else {
-    banner.style.background='linear-gradient(135deg,#1b5e20,#2e7d32)';
-  }
-  var totalDrivers = driverOrder.length;
-  var btnSt = 'padding:3px 10px;background:rgba(255,255,255,0.22);color:#fff;border:1px solid rgba(255,255,255,0.45);border-radius:12px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap';
-  // 전체 수량 버튼 — 모두에게 표시
-  var popupBtn = '<button onclick="openR2AllPopup()" style="'+btnSt+'">📊 전체 수량 ('+totalDrivers+'명)</button>';
-
-  if(myDriverId){
-    // 본인 라우트 데이터 있음 → 개인 테이블 + 버튼
-    var d = driverMap[myDriverId];
-    // 개인 라우트 테이블 + 버튼
-    var myRoutes = d.routes;
-    var myQtyHtml = myRoutes.map(function(r){
-      return '<span style="display:inline-block;margin-right:10px;font-size:10px">'+
-        '<b>'+escHtml(r.route||'-')+'</b>: '+(r.qty||0)+'개'+
-      '</span>';
-    }).join('');
-    banner.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
-        '<div style="min-width:0">'+
-          '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.8);letter-spacing:0.4px">'+
-            '&#x1F4CB; 2회전 예상'+
-            (isPastDeadline?' <span style="font-weight:400;opacity:.65">(마감 '+endStr+')</span>':'')+
-          '</div>'+
-          '<div style="font-size:11px;font-weight:700;color:#fff;margin:2px 0">'+
-            '&#x1F4E6; 신선 '+d.totalFresh+' / 당일 '+d.totalSame+
-            ' &nbsp;<span style="font-weight:400">('+d.totalQty+'개)</span>'+
-          '</div>'+
-          (myQtyHtml?'<div style="color:rgba(255,255,255,0.85);margin-top:1px">'+myQtyHtml+'</div>':'')+
-          '<div style="font-size:9px;color:rgba(255,255,255,0.6);margin-top:2px">공유: '+sharedTimeStr+'</div>'+
-        '</div>'+
-        popupBtn+
-      '</div>';
-  } else {
-    // 본인 데이터 없음 (관리자/팀장 또는 드라이버 미매칭)
-    var totalQtyAll = 0;
-    driverOrder.forEach(function(did){ totalQtyAll += driverMap[did].totalQty; });
-    banner.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
-        '<div>'+
-          '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.8);letter-spacing:0.4px">'+
-            '&#x1F4CB; 2회전 예상 현황'+
-            (isPastDeadline?' <span style="font-weight:400;opacity:.65">(마감 '+endStr+')</span>':'')+
-          '</div>'+
-          '<div style="font-size:11px;color:rgba(255,255,255,0.9);margin-top:3px">'+
-            '총 '+totalDrivers+'명 / '+totalQtyAll+'개 예상'+
-          '</div>'+
-          '<div style="font-size:9px;color:rgba(255,255,255,0.65);margin-top:2px">공유: '+sharedTimeStr+'</div>'+
-        '</div>'+
-        popupBtn+
-      '</div>';
-  }
-}
-
-function openR2AllPopup(){
-  var popup = document.getElementById('r2-all-popup');
-  if(!popup) return;
-  var sortedOrder = window._r2SortedOrder || [];
-  var driverMap   = window._r2DriverMap   || {};
-  var timeStr     = window._r2SharedTimeStr || '';
-  var endStr      = window._r2EndStr || '';
-  if(sortedOrder.length === 0){ popup.style.display='none'; return; }
-  var rows = sortedOrder.map(function(did){
-    var d = driverMap[did];
-    var roleLabel = {admin:'관리자',leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'기사';
-    return '<tr style="border-bottom:1px solid #f0f0f0">'+
-      '<td style="padding:7px 6px;font-size:12px;font-weight:600">'+escHtml(d.name)+'<br>'+
-        '<span style="font-size:10px;color:#9e9e9e;font-weight:400">'+roleLabel+'</span></td>'+
-      '<td style="padding:7px 6px;text-align:center;font-weight:700">'+d.totalQty+'</td>'+
-      '<td style="padding:7px 6px;text-align:center;color:#1565c0">'+d.totalFresh+'</td>'+
-      '<td style="padding:7px 6px;text-align:center;color:#6a1b9a">'+d.totalSame+'</td>'+
-    '</tr>';
-  }).join('');
-  var hdr = '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-    '<thead><tr style="background:#e8f5e9;color:#1b5e20">'+
-    '<th style="padding:8px 6px;text-align:left;border-bottom:2px solid #a5d6a7">기사</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">전체</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">신선</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">당일</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table>';
-  var body = document.getElementById('r2-all-popup-body');
-  if(body) body.innerHTML = hdr;
-  var timeEl = document.getElementById('r2-all-popup-time');
-  if(timeEl) timeEl.textContent = '공유: '+timeStr+(endStr?' | 마감: '+endStr:'');
-  popup.style.display='flex';
-}
-function closeR2AllPopup(){
-  var p=document.getElementById('r2-all-popup'); if(p) p.style.display='none';
-}
-
-
+// pgFresh: 신선 탭 초기 HTML (스켈레톤 + 비활성화 체크)
 function pgFresh(){
   if(!CU)return'';
-  if(!getFeatureCtrl('fresh','active')&&(!CU||CU.role!=='admin')){
+  var isAdmin=(CU.role==='admin');
+  if(!getFeatureCtrl('fresh','active')&&!isAdmin){
     return _featureBar('fresh')+
       '<div class="stit">&#x1F33F; 신선 현황</div>'+
       '<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #c8e6c9">'+
         '<div style="font-size:52px;margin-bottom:16px">&#x1F512;</div>'+
-        '<div style="font-size:17px;font-weight:800;color:#2e7d32;margin-bottom:10px">신선 현황 기능이 잠겼습니다</div>'+
-        '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>문의사항은 관리자에게 연락해 주세요.</div>'+
+        '<div style="font-size:17px;font-weight:800;color:#2e7d32;margin-bottom:10px">신선 기능이 잠겼습니다</div>'+
+        '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
-  var isAdm=CU&&CU.role==='admin';
-  var kwBtn=isAdm?'<button onclick="openFreshKwPopup()" style="float:right;padding:6px 14px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
-  return _featureBar('fresh')+
-    '<div id="fr-round2-banner" style="display:none"></div>'+
-    '<div class="stit">&#x1F33F; 신선 배송 현황'+kwBtn+'</div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
-    '<span style="font-size:12px;color:#9e9e9e" id="fr-updated">마지막 업데이트: -</span>'+
-    '<button onclick="loadFreshStatus()" style="padding:6px 14px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer">&#x1F504; 새로고침</button>'+
-    '</div>'+
-    '<div id="fr-summary" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>'+
-    '<div id="fr-table"><div style="text-align:center;padding:32px;color:#888">&#x23F3; 로딩 중...</div></div>'+
-    // ── 신선 키워드 팝업 ──
-    '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
-    '<div style="background:#fff;border-radius:16px;padding:20px;width:88%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
-    '<span style="font-size:15px;font-weight:700;color:#1b5e20">&#x1F33F; 신선 트리거 키워드</span>'+
-    '<button onclick="closeFreshKwPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button>'+
-    '</div>'+
-    '<div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">이 키워드가 Teams에 감지되면 쿠팡 신선 2회전 현황을 자동 조회합니다 (11~13시)</div>'+
-    '<div id="kw-fresh"></div>'+
-    '<div style="display:flex;gap:6px;margin-top:10px">'+
-    '<input id="kw-fresh-input" type="text" placeholder="키워드 입력 (예: 2회전 예상)" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px">'+
-    '<button onclick="saveKeyword(\'fresh\')" style="padding:8px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button>'+
-    '</div>'+
-    '</div></div>';
-}
-function openMdKwPopup(){
-  var pop=document.getElementById('md-kw-popup');
-  if(!pop)return;
-  pop.style.display='flex';
-  loadKeywords();
-}
-function closeMdKwPopup(){
-  var pop=document.getElementById('md-kw-popup');
-  if(pop)pop.style.display='none';
-}
-function openFreshKwPopup(){
-  var pop=document.getElementById('fr-kw-popup');
-  if(!pop)return;
-  pop.style.display='flex';
-  loadKeywords();
-}
-function closeFreshKwPopup(){
-  var pop=document.getElementById('fr-kw-popup');
-  if(pop)pop.style.display='none';
-  renderFreshKwInline();
-}
-function renderFreshKwInline(){
-  var box=document.getElementById('fr-kw-list');
-  if(!box)return;
-  var kws=_kwData.fresh||[];
-  if(kws.length===0){box.textContent='등록된 키워드 없음';return;}
-  box.innerHTML=kws.map(function(k){
-    return '<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;border-radius:12px;padding:3px 10px;margin:2px 3px;font-size:12px">&#x1F3F7; '+escHtml(k)+'</span>';
-  }).join('');
+  return (isAdmin?_featureBar('fresh'):'')+
+    '<div class="stit">&#x1F33F; 신선 현황</div>'+
+    '<div style="text-align:center;padding:40px;color:#888">&#x23F3; 불러오는 중...</div>';
 }
 
+// loadFreshStatus: 신선 탭 데이터 로드 (Supabase fresh_snapshots + round2_expected)
 async function loadFreshStatus(){
-  if(!sbClient)return;
-  if(!getFeatureCtrl('fresh','active')&&(!CU||CU.role!=='admin')){
-    var mc=document.getElementById('mc');
-    if(mc&&CUR_TAB==='fr')mc.innerHTML=pgFresh();
+  var mc=document.getElementById('mc');
+  if(!mc||CUR_TAB!=='fr')return;
+  if(!CU)return;
+  var isAdmin=(CU.role==='admin');
+  if(!getFeatureCtrl('fresh','active')&&!isAdmin)return;
+
+  if(!sbClient){
+    mc.innerHTML=(isAdmin?_featureBar('fresh'):'')+
+      '<div class="stit">&#x1F33F; 신선 현황</div>'+
+      '<div class="empty"><div class="ei">&#x26A0;&#xFE0F;</div><p>서버 연결 없음</p></div>';
     return;
   }
 
-  // 2회전 예상 배너 로드
-  loadRound2Banner();
+  try{
+    var today=new Date().toISOString().slice(0,10);
 
-  // 키워드 인라인 표시 갱신
-  if(!_kwData.fresh||_kwData.fresh.length===0){
-    loadKeywords().then(function(){renderFreshKwInline();});
-  } else {
-    renderFreshKwInline();
+    // ── 2회전 예상 수량 (round2_expected) ─────────────────────────
+    var r2Res=await sbClient.from('round2_expected')
+      .select('driver_name,qty,shared_at')
+      .eq('shared_date',today)
+      .order('qty',{ascending:false});
+    var r2Rows=(!r2Res.error&&r2Res.data)?r2Res.data:[];
+
+    var r2Banner='';
+    if(r2Rows.length>0){
+      var r2Total=r2Rows.reduce(function(s,r){return s+(r.qty||0);},0);
+      var r2At=(r2Rows[0].shared_at||'').slice(11,16);
+      _freshNavTotal=r2Total;
+      updateNavDots();
+      r2Banner='<div style="margin:0 0 12px 0;padding:12px 14px;background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:14px;border:1.5px solid #a5d6a7">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+          '<span style="font-size:13px;font-weight:800;color:#2e7d32">&#x1F33F; 2회전 예상 총 수량</span>'+
+          '<span style="font-size:20px;font-weight:900;color:#1b5e20">'+r2Total+'건</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:#66bb6a;margin-bottom:8px">&#x1F4C5; '+today+' &nbsp;&#x23F0; '+r2At+' 기준</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:5px">'+
+        r2Rows.map(function(r){
+          return '<span style="background:#fff;border:1px solid #a5d6a7;border-radius:8px;padding:3px 8px;font-size:11px;color:#2e7d32">'+
+            (r.driver_name||r.driver_id||'-')+' <b>'+r.qty+'</b></span>';
+        }).join('')+
+        '</div></div>';
+    } else {
+      _freshNavTotal=0;
+      updateNavDots();
+      r2Banner='<div style="margin:0 0 12px 0;padding:10px 14px;background:#f9fbe7;border-radius:12px;border:1px solid #dce775;font-size:12px;color:#827717">'+
+        '&#x1F33F; 오늘('+today+') 2회전 예상 데이터 없음 — Teams 채널에서 "2회전 예상" 키워드 입력 시 자동 조회됩니다.</div>';
+    }
+
+    // ── 신선 배송 현황 (fresh_snapshots) ────────────────────────────
+    var fsRes=await sbClient.from('fresh_snapshots')
+      .select('*').order('created_at',{ascending:false}).limit(1);
+
+    var html=(isAdmin?_featureBar('fresh'):'')+
+      '<div class="stit">&#x1F33F; 신선 현황</div>'+
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'+
+        '<button onclick="loadFreshStatus()" style="background:#388e3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 새로고침</button>'+
+      '</div>'+r2Banner;
+
+    if(fsRes.error||!fsRes.data||fsRes.data.length===0){
+      html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>신선 배송 현황 데이터 없음<br><span style="font-size:11px;color:#999">Teams 폴러가 실행 중이면 자동으로 업데이트됩니다</span></p></div>';
+      mc.innerHTML=html;
+      return;
+    }
+
+    var snap=fsRes.data[0];
+    var routes=snap.routes||[];
+    var snapAt=(snap.snapshot_at||snap.created_at||'').slice(11,16);
+    var snapDate=(snap.snapshot_at||snap.created_at||'').slice(0,10);
+
+    if(routes.length===0){
+      html+='<div class="card" style="text-align:center;color:#888;padding:24px">배송 현황 없음</div>';
+      mc.innerHTML=html;
+      return;
+    }
+
+    var db=getDB();
+    var idMap={};
+    Object.values(db).forEach(function(d){if(d.coupang_id)idMap[String(d.coupang_id)]=d.name;});
+
+    html+='<div style="font-size:11px;color:#888;margin-bottom:6px">&#x1F4CA; 현황 기준: '+snapDate+' '+snapAt+'</div>'+
+      '<div class="card" style="padding:0;overflow:hidden">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr style="background:#e8f5e9;font-weight:800;font-size:11px">'+
+        '<th style="padding:8px;text-align:left">라우트</th>'+
+        '<th style="padding:8px 4px;text-align:left">기사</th>'+
+        '<th style="padding:8px 4px;text-align:center">위탁</th>'+
+        '<th style="padding:8px 4px;text-align:center">스캔</th>'+
+        '<th style="padding:8px 4px;text-align:center">완료</th>'+
+        '<th style="padding:8px 4px;text-align:center">미배</th>'+
+        '<th style="padding:8px 4px;text-align:center">PDD</th>'+
+      '</tr></thead><tbody>';
+
+    routes.forEach(function(rt){
+      var abbr=rt.route||'';
+      var m=abbr.match(/([A-Z]\d+[A-Z]?\d*)$/);if(m)abbr=m[1];
+      var worker=String(rt.worker||'');
+      var wName=idMap[worker]||worker||'미배정';
+      var csg=rt.consignment||0,scn=rt.scan||0,cmp=rt.completed||0,und=rt.undelivered||0,pdd=rt.pdd_miss||0;
+      var rowBg='';
+      var statusCells;
+      if(scn===0&&csg>0){
+        statusCells='<td colspan="3" style="text-align:center;color:#2e7d32;font-weight:700;font-size:11px">&#x2705; 완료</td><td>-</td>';
+      }else{
+        if(pdd>0&&und!==pdd)rowBg='background:#fff3e0';
+        var pddTd=pdd>0
+          ?(und===pdd?'<td style="color:#f57c00;font-size:10px">&#x23F3;'+pdd+'</td>':'<td style="color:#c62828;font-weight:700">&#x26A0;'+pdd+'</td>')
+          :'<td style="color:#ccc">-</td>';
+        statusCells='<td style="text-align:center">'+cmp+'</td><td style="text-align:center;color:#c62828">'+und+'</td>'+pddTd;
+      }
+      html+='<tr style="border-bottom:1px solid #f0f0f0;'+rowBg+'">'+
+        '<td style="padding:8px;font-weight:700;color:#1a237e">'+abbr+'</td>'+
+        '<td style="padding:8px 4px;font-size:11px;color:#444">'+wName+'</td>'+
+        '<td style="text-align:center;color:#5c6bc0">'+csg+'</td>'+
+        '<td style="text-align:center;color:#1565c0">'+scn+'</td>'+
+        statusCells+'</tr>';
+    });
+
+    html+='</tbody></table></div>';
+    mc.innerHTML=html;
+
+  }catch(ex){
+    if(mc&&CUR_TAB==='fr'){
+      mc.innerHTML=(isAdmin?_featureBar('fresh'):'')+
+        '<div class="stit">&#x1F33F; 신선 현황</div>'+
+        '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
+    }
   }
-  var tbl=document.getElementById('fr-table');
-  var upd=document.getElementById('fr-updated');
-  var smry=document.getElementById('fr-summary');
-  if(!tbl)return;
-  tbl.innerHTML='<div style="text-align:center;padding:24px;color:#888">&#x23F3; 로딩 중...</div>';
-  var result=await sbClient.from('fresh_snapshots').select('*').order('fetched_at',{ascending:false}).limit(1);
-  var data=result.data, error=result.error;
-  if(error||!data||data.length===0){
-    tbl.innerHTML='<div style="text-align:center;padding:32px;color:#9e9e9e">데이터 없음<br><span style="font-size:12px">폴러가 신선 현황을 수집하면 여기에 표시됩니다</span></div>';
-    return;
-  }
-  var snap=data[0];
-  var routes=[];
-  try{routes=typeof snap.routes==='string'?JSON.parse(snap.routes):snap.routes;}catch(e){}
-  if(!routes||routes.length===0){
-    tbl.innerHTML='<div style="text-align:center;padding:32px;color:#9e9e9e">라우트 데이터 없음</div>';
-    return;
-  }
-  // 업데이트 시간
-  if(upd&&snap.fetched_at){
-    upd.textContent='마지막 업데이트: '+new Date(snap.fetched_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  }
-  // 전체 합계
-  var totTotal=0,totScanned=0,totDone=0,totUndel=0,totPdd=0;
-  routes.forEach(function(r){
-    totTotal+=(r.total||0);totScanned+=(r.scanned||0);totDone+=(r.completed||0);totUndel+=(r.undelivered||0);totPdd+=(r.pdd_miss||0);
-  });
-  var doneRate=totTotal>0?Math.round(totDone/totTotal*100):0;
-  // 고정바 신선 탭에 2회전 수량 표시
-  _freshNavTotal=totTotal;
-  updateNavDots();
-  // 요약 카드
-  if(smry){
-    var cards=[
-      {lbl:'2회전 수량',val:totTotal,clr:'#1565c0',icon:'&#x1F4E6;'},
-      {lbl:'스캔',val:totScanned,clr:'#6a1b9a',icon:'&#x1F4F7;'},
-      {lbl:'완료',val:totDone,clr:'#2e7d32',icon:'&#x2705;'},
-      {lbl:'미배송',val:totUndel,clr:'#e65100',icon:'&#x23F3;'},
-      {lbl:'PDD miss',val:totPdd,clr:'#c62828',icon:'&#x26A0;'},
-      {lbl:'완료율',val:doneRate+'%',clr:'#37474f',icon:'&#x1F4CA;'},
-    ];
-    smry.innerHTML=cards.map(function(c){
-      return '<div style="flex:1;min-width:80px;padding:10px 8px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.1);text-align:center;border-top:3px solid '+c.clr+'">'+
-        '<div style="font-size:18px">'+c.icon+'</div>'+
-        '<div style="font-size:20px;font-weight:800;color:'+c.clr+'">'+c.val+'</div>'+
-        '<div style="font-size:11px;color:#757575;margin-top:2px">'+c.lbl+'</div>'+
-        '</div>';
-    }).join('');
-  }
-  // 라우트별 테이블
-  var hdr='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'+
-    '<thead><tr style="background:#e8f5e9;color:#1b5e20">'+
-    '<th style="padding:8px 6px;text-align:left;border-bottom:2px solid #a5d6a7">라우트</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">수량</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">스캔</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">완료</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">미배송</th>'+
-    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">PDD miss</th>'+
-    '</tr></thead><tbody>';
-  var rows=routes.map(function(r){
-    var abbr=r.route||'-';
-    var worker=r.worker||'미배정';
-    if(worker in DRIVER_MAP_OBJ)worker=DRIVER_MAP_OBJ[worker];
-    var clr='';
-    if(r.pdd_miss>0)clr='background:#fff3e0';else if(r.undelivered===0&&r.total>0)clr='background:#e8f5e9';
-    return '<tr style="border-bottom:1px solid #f0f0f0;"+clr+"">'+
-      '<td style="padding:7px 6px;font-size:12px;font-weight:600">'+escHtml(abbr)+'<br><span style="font-weight:400;color:#888;font-size:11px">'+escHtml(worker)+'</span></td>'+
-      '<td style="padding:7px 6px;text-align:center">'+(r.total||0)+'</td>'+
-      '<td style="padding:7px 6px;text-align:center">'+(r.scanned||0)+'</td>'+
-      '<td style="padding:7px 6px;text-align:center">'+(r.completed||0)+'</td>'+
-      '<td style="padding:7px 6px;text-align:center">'+(r.undelivered||0)+'</td>'+
-      '<td style="padding:7px 6px;text-align:center;color:'+(r.pdd_miss>0?'#c62828':'#9e9e9e')+';font-weight:'+(r.pdd_miss>0?'700':'400')+'">'+(r.pdd_miss||0)+'</td>'+
-      '</tr>';
-  }).join('');
-  tbl.innerHTML=hdr+rows+'</tbody></table></div>';
 }
-
-
 
 </script>
 </body></html>
