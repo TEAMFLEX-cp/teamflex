@@ -559,7 +559,17 @@ textarea.ann-input:focus{border-color:#1565c0}
       <div class="mt">&#x1F4E2; 공지사항 작성</div>
       <div class="fg"><label>제목</label><input type="text" id="ann-title-inp" placeholder="공지 제목"></div>
       <div class="fg"><label>내용</label><textarea class="ann-input" id="ann-body-inp" placeholder="공지 내용을 입력하세요..."></textarea></div>
-      <div class="checkbox-row"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 (로그인 시 팝업 표시)</label></div>
+      <div class="checkbox-row" id="ann-imp-row" style="display:none"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 — 최상단 고정 (팀장·관리자 전용)</label></div>
+      <div class="fg" style="margin-top:10px">
+        <label style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;display:block">📅 노출 기간 <span style="color:#e53935">*</span> <span style="font-size:11px;color:#888;font-weight:400">(기간 만료 후 자동 숨김)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label id="ann-exp-lbl-1" style="display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;color:#555"><input type="radio" name="ann-expire" value="1" onchange="selectAnnExpire(1)" style="accent-color:#1565c0">1일</label>
+          <label id="ann-exp-lbl-3" style="display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;color:#555"><input type="radio" name="ann-expire" value="3" onchange="selectAnnExpire(3)" style="accent-color:#1565c0">3일</label>
+          <label id="ann-exp-lbl-7" style="display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;color:#555"><input type="radio" name="ann-expire" value="7" onchange="selectAnnExpire(7)" style="accent-color:#1565c0">7일</label>
+          <label id="ann-exp-lbl-15" style="display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;color:#555"><input type="radio" name="ann-expire" value="15" onchange="selectAnnExpire(15)" style="accent-color:#1565c0">15일</label>
+          <label id="ann-exp-lbl-30" style="display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;color:#555"><input type="radio" name="ann-expire" value="30" onchange="selectAnnExpire(30)" style="accent-color:#1565c0">30일</label>
+        </div>
+      </div>
       <div class="errmsg" id="ann-err"></div>
       <div style="display:flex;gap:8px">
         <button class="btn-s" style="flex:1" onclick="closeAnnWrite()">취소</button>
@@ -806,16 +816,22 @@ async function syncFromSupabase(){
         var anns=aRes.data.map(function(a){
           // 기존 로컬 공지에서 readBy 보존 (Supabase 덮어쓰기 방지)
           var ex=existingAnns.find(function(e){return String(e.id)===String(a.id)||String(e.sb_id)===String(a.id);});
+          // Supabase read_by + 로컬 readBy 합집합
+          var sbRb=[];if(a.read_by){try{sbRb=JSON.parse(a.read_by);}catch(e){}}
+          var localRby=(ex?ex.readBy:[])||[];
+          var mergedRby=sbRb.slice();localRby.forEach(function(n){if(mergedRby.indexOf(n)<0)mergedRby.push(n);});
           return {
             id:a.id,
             sb_id:a.id,
             title:a.title,
-            body:a.body||a.content||'',    // ← 본문 body 필드 유지
+            body:a.body||a.content||'',
             content:a.body||a.content||'',
             author:a.author||'관리자',
             important:a.pinned||false,
             at:a.created_at,
-            readBy:ex?(ex.readBy||[]):[]   // ← 확인 상태(readBy) 보존!
+            expireAt:a.expire_at||(ex?ex.expireAt:null)||null,
+            expireDays:(ex?ex.expireDays:null)||null,
+            readBy:mergedRby
           };
         });
         localStorage.setItem('tfann',JSON.stringify(anns));
@@ -973,7 +989,8 @@ function sbSaveDriver(d){
 function sbSaveAnn(ann){
   if(!sbClient||!ann)return;
   var obj={title:ann.title||'',body:ann.content||ann.body||'',
-           author:ann.author||'관리자',pinned:ann.important||false};
+           author:ann.author||'관리자',pinned:ann.important||false,
+           expire_at:ann.expireAt||null};
   if(ann.sb_id){
     // 기존 Supabase 레코드 업데이트
     sbClient.from('announcements').update(obj).eq('id',ann.sb_id)
@@ -1649,16 +1666,18 @@ function _queueSchedPush(workDate, route, oldDriver, newDriver){
 }
 
 // 공지 발송 + Edge Function 호출
-async function sendPushToAll(title, body, ann_id){
+async function sendPushToAll(title, body, ann_id, targetName){
   if(!sbClient)return;
   try{
+    var payload={title:title,body:body,ann_id:ann_id};
+    if(targetName)payload.target_name=targetName;
     var res=await fetch(PUSH_EDGE_URL,{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
         'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cGlueWZpcmd2a2hkZm52a2xzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5NTI0MDYsImV4cCI6MjA2MDUyODQwNn0.iuHBOHnlWQqlGPnJkVX4n7DlSeGPkFVaByMWWfJVw-c'
       },
-      body:JSON.stringify({title:title,body:body,ann_id:ann_id})
+      body:JSON.stringify(payload)
     });
     var r=await res.json();
     console.log('[Push] 발송 결과:',r);
@@ -3482,89 +3501,266 @@ function pgAnn(isAdmin){
     return a.disabled||isAnnExpired(a);
   }):[];
 
-  // 카드 렌더러
-  function renderCard(a, isCollapsed){
-    var isExpired=isAnnExpired(a);
-    var isDisabled=!!a.disabled;
-    var isBlinded=isExpired||isDisabled;
-    var isUnread=!isBlinded&&(!a.readBy||a.readBy.indexOf(CU.name)<0);
+  // 활성 카드 렌더러 (일반 카드)
+  function renderCard(a){
+    var isUnread=!a.readBy||a.readBy.indexOf(CU.name)<0;
     var cardBtns='';
     if(isAdm){
-      if(!isBlinded){
-        cardBtns+='<button onclick="event.stopPropagation();disableAnn('+a.id+')" style="background:none;border:none;color:#e65100;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">⛔비활성</button>';
-      } else {
-        cardBtns+='<button onclick="event.stopPropagation();enableAnn('+a.id+')" style="background:none;border:none;color:#2e7d32;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">✅재게시</button>';
-      }
-      if(canDeleteAnn(a))cardBtns+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
-      if(canEditAnn(a)&&!isBlinded)cardBtns+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
-    } else {
-      if(canDeleteAnn(a))cardBtns+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
-      if(canEditAnn(a))cardBtns+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
+      cardBtns+='<button onclick="event.stopPropagation();disableAnn('+a.id+')" style="background:none;border:none;color:#e65100;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">⛔비활성</button>';
     }
-    if(isCollapsed){
-      // 만료/비활성 — 축소형 카드 (제목+배지만, 내용 없음)
-      var cBadge=isDisabled
-        ?'<span style="font-size:10px;background:#e65100;color:#fff;border-radius:10px;padding:1px 7px;margin-right:6px">⛔비활성</span>'
-        :'<span style="font-size:10px;background:#9e9e9e;color:#fff;border-radius:10px;padding:1px 7px;margin-right:6px">⏰만료됨</span>';
-      return '<div class="ann-card" style="opacity:.45;padding:9px 14px;cursor:default" onclick="event.stopPropagation()">'+
-        '<div class="ann-hdr" style="margin-bottom:0">'+cBadge+
-        '<div style="font-size:12px;font-weight:500;color:#999;flex:1">['+a.at.slice(0,10)+'] '+a.title+'</div>'+cardBtns+'</div></div>';
-    }
-    // 활성 — 일반 카드
-    var cardStyle='class="ann-card'+(a.important?' imp':'')+'"';
-    return '<div '+cardStyle+' onclick="openAnnView('+a.id+')">'+
+    if(canDeleteAnn(a))cardBtns+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
+    if(canEditAnn(a))cardBtns+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
+    // 관리자/팀장: 확인 현황 버튼
+    var statBtn=canWriteAnn()?'<button onclick="event.stopPropagation();_openAnnUnreadWithLoader('+a.id+')" style="background:none;border:none;color:#1565c0;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">📊현황</button>':'';
+    var expStr=a.expireAt?'<span style="font-size:11px;font-weight:800;color:#e65100;background:#fff3e0;border:1px solid #ffb74d;border-radius:5px;padding:1px 6px;margin-left:6px">&#x1F4C5;~'+new Date(a.expireAt).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})+'</span>':'';
+    return '<div class="ann-card'+(a.important?' imp':'')+'" onclick="openAnnView('+a.id+')">'+
       '<div class="ann-hdr">'+(a.important?'<span class="imp-badge">&#x2757; 중요</span>':'')+
-      '<div class="ann-title">'+(isUnread?'<b>':'')+'['+a.at.slice(0,10)+'] '+a.title+(isUnread?'</b>':'')+'</div>'+cardBtns+'</div>'+
-      '<div class="ann-meta">'+a.author+' &middot; '+a.at+
-        '<span style="margin-left:10px;font-size:11px;color:'+(isUnread?'#e53935':'#bbb')+'">'+(isUnread?'● 미확인':'✓ 확인')+'</span>'+
+      '<div class="ann-title">'+(isUnread?'<b>':'<span style="color:#888">')+'['+a.at.slice(0,10)+'] '+a.title+(isUnread?'</b>':'</span>')+'</div>'+
+      statBtn+cardBtns+'</div>'+
+      '<div class="ann-meta">'+a.author+' &middot; '+a.at.slice(0,10)+
+        '<span style="margin-left:10px;font-size:11px;color:'+(isUnread?'#e53935':'#aaa')+'">'+(isUnread?'● 미확인':'✓ 확인')+'</span>'+expStr+
       '</div></div>';
   }
 
-  var activeCards=activeAnns.length===0
-    ?'<div class="empty"><div class="ei">&#x1F4EC;</div><p>공지사항이 없습니다.</p></div>'
-    :activeAnns.map(function(a){return renderCard(a,false);}).join('');
+  // 미확인/확인 분리 (활성 공지만)
+  var unreadAnns=activeAnns.filter(function(a){return !a.readBy||a.readBy.indexOf(CU.name)<0;});
+  var readAnns=activeAnns.filter(function(a){return a.readBy&&a.readBy.indexOf(CU.name)>=0;});
 
-  var expiredSection='';
+  var sections='';
+  if(activeAnns.length===0){
+    sections='<div class="empty"><div class="ei">&#x1F4EC;</div><p>공지사항이 없습니다.</p></div>';
+  }else{
+    if(unreadAnns.length>0){
+      sections+='<div style="display:flex;align-items:center;gap:8px;margin:8px 0 6px"><div style="flex:1;height:1px;background:#ffcdd2"></div><span style="font-size:11px;font-weight:700;color:#c62828;background:#ffebee;padding:2px 10px;border-radius:10px;white-space:nowrap">&#x1F514; 미확인 '+unreadAnns.length+'건</span><div style="flex:1;height:1px;background:#ffcdd2"></div></div>';
+      sections+=unreadAnns.map(renderCard).join('');
+    }
+    if(readAnns.length>0){
+      sections+='<div style="display:flex;align-items:center;gap:8px;margin:16px 0 6px"><div style="flex:1;height:1px;background:#c8e6c9"></div><span style="font-size:11px;font-weight:700;color:#388e3c;background:#e8f5e9;padding:2px 10px;border-radius:10px;white-space:nowrap">&#x2705; 확인 '+readAnns.length+'건</span><div style="flex:1;height:1px;background:#c8e6c9"></div></div>';
+      sections+=readAnns.map(renderCard).join('');
+    }
+  }
+
+  // 만료/비활성 — 관리자 전용 회색 한줄 카드
   if(isAdm&&expiredAnns.length>0){
-    expiredSection=
-      '<div style="margin:18px 0 8px;display:flex;align-items:center;gap:8px">'+
-        '<div style="flex:1;height:1px;background:#e0e0e0"></div>'+
-        '<span style="font-size:10px;color:#bbb;white-space:nowrap">만료/비활성 공지 — 관리자만 표시</span>'+
-        '<div style="flex:1;height:1px;background:#e0e0e0"></div>'+
-      '</div>'+
-      expiredAnns.map(function(a){return renderCard(a,true);}).join('');
+    sections+='<div style="display:flex;align-items:center;gap:8px;margin:20px 0 8px"><div style="flex:1;height:1px;background:#e0e0e0"></div><span style="font-size:11px;font-weight:700;color:#9e9e9e;background:#f5f5f5;padding:2px 10px;border-radius:10px;white-space:nowrap">&#x23F8; 기간 만료/비활성 '+expiredAnns.length+'건 (관리자만 보임)</span><div style="flex:1;height:1px;background:#e0e0e0"></div></div>';
+    sections+=expiredAnns.map(function(a){
+      var isExp=isAnnExpired(a);
+      var expDateStr=a.expireAt?new Date(a.expireAt).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):'';
+      var cardBtns2='';
+      if(canDeleteAnn(a))cardBtns2='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px" title="영구 삭제">&#x1F5D1;</button>';
+      if(canEditAnn(a))cardBtns2+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#9e9e9e;font-size:12px;cursor:pointer;padding:2px 6px" title="수정(기간 연장)">&#x270F;</button>';
+      cardBtns2+='<button onclick="event.stopPropagation();enableAnn('+a.id+')" style="background:none;border:none;color:#2e7d32;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">✅재게시</button>';
+      return '<div class="ann-card" style="opacity:0.45;filter:grayscale(0.5);border-left-color:#bdbdbd;cursor:default">'+
+        '<div class="ann-hdr">'+
+          (a.important?'<span class="imp-badge" style="opacity:0.5">⚠ 중요</span>':'')+
+          '<div class="ann-title"><span style="color:#aaa">['+a.at.slice(0,10)+'] '+a.title+'</span></div>'+
+          cardBtns2+
+        '</div>'+
+        '<div class="ann-meta" style="color:#bbb">'+a.author+' · '+a.at.slice(0,10)+
+          (isExp&&expDateStr?'<span style="margin-left:8px;font-size:11px;background:#eeeeee;color:#9e9e9e;padding:1px 7px;border-radius:8px">⏸ 만료 ('+expDateStr+')</span>':'<span style="margin-left:8px;font-size:11px;background:#fbe9e7;color:#e65100;padding:1px 7px;border-radius:8px">⛔비활성</span>')+
+        '</div></div>';
+    }).join('');
   }
 
   return (isAdmin?_featureBar('ann'):'')+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="stit" style="margin-bottom:0">공지사항</div>'+writeBtn+'</div>'+
-    activeCards+expiredSection;
+    sections;
 }
 function openAnnView(annId){
   var anns=getAnns();
   var a=anns.find(function(x){return String(x.id)===String(annId);});
   if(!a)return;
-  // Mark as read
+  // Mark as read (로컬)
   if(!a.readBy)a.readBy=[];
-  if(CU&&a.readBy.indexOf(CU.name)<0){a.readBy.push(CU.name);saveAnns(anns);updateNavDots();}
+  var wasUnread=CU&&a.readBy.indexOf(CU.name)<0;
+  if(wasUnread){a.readBy.push(CU.name);saveAnns(anns);updateNavDots();}
   markAnnRead(a.id);
-  // Show in popup (single-item queue so closeAnnPopup works cleanly)
+  // Supabase read_by 동기화 (비동기)
+  if(wasUnread&&sbClient){
+    (async function(){
+      try{
+        var sbId=a.sb_id||a.id;
+        var res=await sbClient.from('announcements').select('read_by').eq('id',sbId).single();
+        var sbArr=[];
+        if(res.data&&res.data.read_by){try{sbArr=JSON.parse(res.data.read_by);}catch(e){sbArr=[];}}
+        if(sbArr.indexOf(CU.name)<0)sbArr.push(CU.name);
+        await sbClient.from('announcements').update({read_by:JSON.stringify(sbArr)}).eq('id',sbId);
+        console.log('[Ann] readBy synced to Supabase');
+      }catch(e){console.warn('[Ann] readBy sync failed',e.message);}
+    })();
+  }
   ANN_QUEUE=[a];ANN_IDX=0;
   var impHtml=a.important?'<span class="imp-badge">&#x2757; 중요</span>':'';
+  var checkBtn=canWriteAnn()?
+    '<button onclick="_openAnnUnreadWithLoader('+a.id+')" style="width:100%;margin-top:14px;padding:10px;border:none;border-radius:10px;background:#e3f2fd;color:#1565c0;font-size:13px;font-weight:700;cursor:pointer">📊 확인 현황 보기</button>':'';
   document.getElementById('ann-popup-content').innerHTML=
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'+
     '<div style="font-size:30px">&#x1F4E2;</div>'+
     '<div><div style="font-size:15px;font-weight:800;color:#1a237e">공지사항 '+impHtml+'</div>'+
     '<div style="font-size:11px;color:#aaa">'+a.author+' &middot; '+a.at+'</div></div></div>'+
     '<div style="font-size:17px;font-weight:800;margin-bottom:14px;color:#1a1a1a">'+a.title+'</div>'+
-    '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+a.body.replace(/\n/g,'<br>')+'</div>';
+    '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+a.body.replace(/\n/g,'<br>')+'</div>'+
+    checkBtn;
   document.getElementById('ann-popup').style.display='';
+}
+
+// ── 공지 확인 현황 팝업 (로딩 → showAnnUnread) ──────────────────────
+function _openAnnUnreadWithLoader(annId){
+  document.getElementById('ann-popup-content').innerHTML=
+    '<div style="text-align:center;padding:40px 20px">'+
+      '<div style="font-size:32px;margin-bottom:12px">&#x1F504;</div>'+
+      '<div style="font-size:13px;color:#888">확인 현황 조회 중...</div>'+
+    '</div>';
+  document.getElementById('ann-popup').style.display='';
+  showAnnUnread(annId,'unread');
+}
+
+async function showAnnUnread(annId, view){
+  view=view||'unread';
+  var anns=getAnns();
+  var a=anns.find(function(x){return String(x.id)===String(annId);});
+  if(!a)return;
+  // Supabase에서 read_by 실시간 조회
+  var sbReadBy=[];
+  if(sbClient){
+    try{
+      var sbId=a.sb_id||a.id;
+      var sbRes=await sbClient.from('announcements').select('read_by').eq('id',sbId).single();
+      if(sbRes.data&&sbRes.data.read_by){try{sbReadBy=JSON.parse(sbRes.data.read_by);}catch(e2){}}
+    }catch(e){console.warn('[showAnnUnread] SB err',e);}
+  }
+  var localRby=a.readBy||[];
+  var readByArr=sbReadBy.slice();
+  localRby.forEach(function(n){if(readByArr.indexOf(n)<0)readByArr.push(n);});
+  if(readByArr.length>localRby.length){a.readBy=readByArr;saveAnns(anns);}
+
+  var db=getDB();
+  var _aIds2=[ROOT_ADMIN.id];
+  (function(){var c=getCfg();if(c.adminId)_aIds2.push(c.adminId);_sbAdmins.forEach(function(x){if(x.id)_aIds2.push(x.id);});})();
+  var allDrvs=Object.values(db).filter(function(d){
+    return d.status==='approved'&&d.role!=='admin'&&!d.name.includes('/')&&_aIds2.indexOf(d.id)<0;
+  }).sort(function(a,b){return a.name.localeCompare(b.name,'ko');});
+  var unread=allDrvs.filter(function(d){return readByArr.indexOf(d.name)<0;});
+  var read=allDrvs.filter(function(d){return readByArr.indexOf(d.name)>=0;});
+  var roleMap={'leader':'팀장','sub':'조장','driver':'기사'};
+  var uSel=view==='unread';
+  var tabUnread='<button onclick="showAnnUnread('+annId+',\'unread\')" style="flex:1;padding:8px 0;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:'+(uSel?'#c62828':'#f5f5f5')+';color:'+(uSel?'#fff':'#888')+'">&#x274C; 미확인 '+unread.length+'명</button>';
+  var tabRead='<button onclick="showAnnUnread('+annId+',\'read\')" style="flex:1;padding:8px 0;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:'+(!uSel?'#2e7d32':'#f5f5f5')+';color:'+(!uSel?'#fff':'#888')+'">&#x2705; 확인 '+read.length+'명</button>';
+
+  var html=
+    '<div style="font-size:14px;font-weight:800;color:#1a237e;margin-bottom:8px">&#x1F4CA; 공지 확인 현황 <span style="font-size:10px;font-weight:400;color:#aaa">(실시간)</span></div>'+
+    '<div style="font-size:12px;color:#555;background:#f0f4ff;padding:7px 11px;border-radius:8px;margin-bottom:12px">"'+a.title+'"</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:12px">'+
+      '<div style="flex:1;text-align:center;padding:8px 4px;background:#ffebee;border-radius:8px">'+
+        '<div style="font-size:18px;font-weight:800;color:#c62828">'+unread.length+'</div>'+
+        '<div style="font-size:10px;color:#c62828">미확인</div></div>'+
+      '<div style="flex:1;text-align:center;padding:8px 4px;background:#e8f5e9;border-radius:8px">'+
+        '<div style="font-size:18px;font-weight:800;color:#2e7d32">'+read.length+'</div>'+
+        '<div style="font-size:10px;color:#2e7d32">확인</div></div>'+
+      '<div style="flex:1;text-align:center;padding:8px 4px;background:#e3f2fd;border-radius:8px">'+
+        '<div style="font-size:18px;font-weight:800;color:#1565c0">'+allDrvs.length+'</div>'+
+        '<div style="font-size:10px;color:#1565c0">전체</div></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:10px">'+tabUnread+tabRead+'</div>';
+
+  if(uSel){
+    if(unread.length===0){
+      html+='<div style="text-align:center;padding:20px;color:#388e3c;font-size:13px;font-weight:700">&#x1F389; 모든 인원이 확인했습니다!</div>';
+    }else{
+      if(canWriteAnn()&&PUSH_EDGE_URL){
+        html+='<button id="btn-push-unread-'+annId+'" onclick="_pushToUnread('+annId+')" style="width:100%;margin-bottom:10px;padding:10px 0;border:none;border-radius:10px;background:linear-gradient(135deg,#e53935,#ef5350);color:#fff;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">'+
+          '&#x1F514; 미확인 '+unread.length+'명에게 알림 보내기</button>';
+      }
+      html+='<div style="overflow-y:auto;max-height:calc(60vh - 280px);border:1px solid #ffcdd2;border-radius:10px">';
+      unread.forEach(function(d,i){
+        html+='<div style="padding:9px 13px;font-size:13px;background:'+(i%2===0?'#fff':'#fff8f8')+';border-bottom:1px solid #fce4ec;display:flex;align-items:center;justify-content:space-between">'+
+          '<span style="font-weight:600;color:#333">'+d.name+'</span>'+
+          '<span style="font-size:11px;color:#fff;background:#e57373;padding:2px 8px;border-radius:8px">'+(roleMap[d.role]||'기사')+'</span></div>';
+      });
+      html+='</div>';
+    }
+  }else{
+    if(read.length===0){
+      html+='<div style="text-align:center;padding:20px;color:#aaa;font-size:13px">아직 아무도 확인하지 않았습니다.</div>';
+    }else{
+      html+='<div style="overflow-y:auto;max-height:calc(60vh - 240px);border:1px solid #c8e6c9;border-radius:10px">';
+      read.forEach(function(d,i){
+        html+='<div style="padding:9px 13px;font-size:13px;background:'+(i%2===0?'#fff':'#f9fff9')+';border-bottom:1px solid #e8f5e9;display:flex;align-items:center;justify-content:space-between">'+
+          '<span style="color:#555">'+d.name+'</span>'+
+          '<span style="font-size:11px;color:#fff;background:#81c784;padding:2px 8px;border-radius:8px">'+(roleMap[d.role]||'기사')+'</span></div>';
+      });
+      html+='</div>';
+    }
+  }
+  document.getElementById('ann-popup-content').innerHTML=html;
+  document.getElementById('ann-popup').style.display='';
+}
+
+// ── 미확인 인원에게만 알림 보내기 ────────────────────────────────────
+async function _pushToUnread(annId){
+  if(!canWriteAnn()||!PUSH_EDGE_URL)return;
+  var anns=getAnns();
+  var a=anns.find(function(x){return String(x.id)===String(annId);});
+  if(!a){showToast('공지를 찾을 수 없습니다.',false);return;}
+  var readByArr=(a.readBy||[]).slice();
+  if(sbClient){
+    try{
+      var sbId=a.sb_id||a.id;
+      var sbRes=await sbClient.from('announcements').select('read_by').eq('id',sbId).single();
+      if(sbRes.data&&sbRes.data.read_by){
+        var sbRb=[];try{sbRb=JSON.parse(sbRes.data.read_by);}catch(e){}
+        sbRb.forEach(function(n){if(readByArr.indexOf(n)<0)readByArr.push(n);});
+      }
+    }catch(e){console.warn('[_pushToUnread] SB err',e);}
+  }
+  var db=getDB();
+  var _aIds2=[ROOT_ADMIN.id];
+  (function(){var c=getCfg();if(c.adminId)_aIds2.push(c.adminId);_sbAdmins.forEach(function(x){if(x.id)_aIds2.push(x.id);});})();
+  var unread=Object.values(db).filter(function(d){
+    return d.status==='approved'&&d.role!=='admin'&&!d.name.includes('/')&&_aIds2.indexOf(d.id)<0&&readByArr.indexOf(d.name)<0;
+  });
+  if(unread.length===0){showToast('✅ 미확인 인원이 없습니다.',true);return;}
+  var btn=document.getElementById('btn-push-unread-'+annId);
+  if(btn){btn.disabled=true;btn.textContent='⏳ 발송 중... (0/'+unread.length+')';}
+  var pushTitle='📢 [공지 미확인 알림] '+(a.title||'공지사항');
+  var pushBody=a.content||a.body||'공지를 아직 읽지 않으셨습니다. 확인해주세요!';
+  var sent=0;
+  for(var i=0;i<unread.length;i++){
+    await sendPushToAll(pushTitle,pushBody,a.id,unread[i].name);
+    sent++;
+    if(btn)btn.textContent='⏳ 발송 중... ('+sent+'/'+unread.length+')';
+    await new Promise(function(r){setTimeout(r,120);});
+  }
+  if(btn){btn.disabled=false;btn.textContent='✅ '+unread.length+'명에게 발송 완료';}
+  showToast('📣 미확인 '+unread.length+'명에게 알림 발송 완료!',true);
 }
 function toggleAnn(id,uname){
   var anns=getAnns();var aid=id.replace('ann-','');
   var a=anns.find(function(x){return String(x.id)===String(aid);});
   if(a){if(!a.readBy)a.readBy=[];if(a.readBy.indexOf(uname)<0){a.readBy.push(uname);saveAnns(anns);updateNavDots();}}
 }
-function openAnnWrite(){document.getElementById('ann-write-modal').style.display='';}
+function selectAnnExpire(days){
+  [1,3,7,15,30].forEach(function(d){
+    var lbl=document.getElementById('ann-exp-lbl-'+d);
+    if(!lbl)return;
+    var sel=(d===days);
+    lbl.style.border='2px solid '+(sel?'#1565c0':'#e0e0e0');
+    lbl.style.background=sel?'#e3f2fd':'#fff';
+    lbl.style.fontWeight=sel?'700':'400';
+    lbl.style.color=sel?'#1565c0':'#555';
+  });
+}
+function openAnnWrite(){
+  document.getElementById('ann-write-modal').style.display='';
+  var impRow=document.getElementById('ann-imp-row');
+  if(impRow){impRow.style.display=(CU&&(CU.role==='admin'||CU.role==='leader'))?'':'none';}
+  document.querySelectorAll('input[name="ann-expire"]').forEach(function(r){r.checked=false;});
+  [1,3,7,15,30].forEach(function(d){
+    var lbl=document.getElementById('ann-exp-lbl-'+d);
+    if(lbl){lbl.style.border='2px solid #e0e0e0';lbl.style.background='#fff';lbl.style.fontWeight='400';lbl.style.color='#555';}
+  });
+  document.getElementById('ann-err').textContent='';
+}
 function closeAnnWrite(){document.getElementById('ann-write-modal').style.display='none';}
 var _annSubmitting=false;
 function submitAnn(){
@@ -3572,12 +3768,16 @@ function submitAnn(){
   var title=document.getElementById('ann-title-inp').value.trim();
   var body=document.getElementById('ann-body-inp').value.trim();
   var imp=document.getElementById('ann-imp').checked;
+  var expireRadio=document.querySelector('input[name="ann-expire"]:checked');
   if(!title||!body){document.getElementById('ann-err').textContent='제목과 내용을 입력해주세요.';return;}
+  if(!expireRadio){document.getElementById('ann-err').textContent='노출 기간을 선택해주세요.';return;}
+  var expireDays=parseInt(expireRadio.value);
+  var expireAt=new Date(Date.now()+expireDays*24*60*60*1000).toISOString();
   _annSubmitting=true;
   var btn=document.querySelector('#ann-write-modal .btn-p');
   if(btn){btn.disabled=true;btn.textContent='저장 중...';}
   var anns=getAnns();
-  var a={id:Date.now(),title:title,body:body,important:imp,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name]};
+  var a={id:Date.now(),title:title,body:body,important:imp,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays};
   anns.push(a);saveAnns(anns);
   // 로컬 알림 + 전체 Push 발송
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
