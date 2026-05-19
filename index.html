@@ -847,6 +847,9 @@ async function syncFromSupabase(){
         });
         // groups
         var lg={};var lkOrder=[];
+        // 기사 데이터가 있을 때만 AW/DW 재구성 (빈 데이터로 하드코딩 AW 덮어쓰기 방지)
+        var _hasDrvData=raw.data.some(function(e){return e.driverName&&e.driverName.trim();});
+        if(!_hasDrvData)return;
         // DW 해당 주차 초기화 (누적 방지 - 이전 데이터 완전 삭제 후 재구성)
         Object.keys(DW).forEach(function(dn){if(DW[dn])delete DW[dn][ws];});
         raw.data.forEach(function(e){
