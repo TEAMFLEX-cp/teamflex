@@ -659,7 +659,10 @@ textarea.ann-input:focus{border-color:#1565c0}
       </div>
     </div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
-      <button id="btnRefresh" onclick="doManualRefresh()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">&#x1F504; 동기화</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0">
+        <button id="btnRefresh" onclick="doManualRefresh()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">&#x1F504; 동기화</button>
+        <span id="sync-status-lbl" style="font-size:10px;color:rgba(255,255,255,.5);padding-right:4px;white-space:nowrap"></span>
+      </div>
       <button class="btn-lo" onclick="openPwModal()">&#x1F512;</button>
       <button class="btn-lo" id="btnLogout">로그아웃</button>
     </div>
@@ -820,6 +823,11 @@ async function syncFromSupabase(){
           var sbRb=[];if(a.read_by){try{sbRb=JSON.parse(a.read_by);}catch(e){}}
           var localRby=(ex?ex.readBy:[])||[];
           var mergedRby=sbRb.slice();localRby.forEach(function(n){if(mergedRby.indexOf(n)<0)mergedRby.push(n);});
+          // expire_at 기반 자동 비활성화 (과거 날짜면 disabled로 취급)
+          var resolvedExpire=a.expire_at||(ex?ex.expireAt:null)||null;
+          var autoExpired=resolvedExpire&&new Date(resolvedExpire).getTime()<=Date.now();
+          // 로컬 disabled 플래그 보존 (수동 비활성화 유지)
+          var localDisabled=ex?(!!(ex.disabled)):false;
           return {
             id:a.id,
             sb_id:a.id,
@@ -829,9 +837,10 @@ async function syncFromSupabase(){
             author:a.author||'관리자',
             important:a.pinned||false,
             at:a.created_at,
-            expireAt:a.expire_at||(ex?ex.expireAt:null)||null,
+            expireAt:resolvedExpire,
             expireDays:(ex?ex.expireDays:null)||null,
-            readBy:mergedRby
+            readBy:mergedRby,
+            disabled:autoExpired||localDisabled
           };
         });
         localStorage.setItem('tfann',JSON.stringify(anns));
@@ -1012,17 +1021,7 @@ function sbSaveAnn(ann){
   }
 }
 
-// ── 전체 기사에게 Web Push 발송 (백그라운드 알림) ─────────────────────
-function sendPushToAll(title, body, annId){
-  if(!PUSH_EDGE_URL)return;
-  fetch(PUSH_EDGE_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({title:title, body:body, ann_id:annId})
-  }).then(function(r){return r.json();})
-    .then(function(d){console.log('[Push] 발송 결과:',d);})
-    .catch(function(e){console.warn('[Push] 발송 실패:',e);});
-}
+// sendPushToAll → 하단에 async 버전(targetName 지원)으로 통합
 
 // ── Supabase에 스케줄 변경 저장 (웹앱 → Supabase → PC 자동 반영) ────
 function showToast(msg,ok){
@@ -1294,8 +1293,16 @@ async function loadFeatureControls(){
   else if((CUR_TAB==='st'||CUR_TAB==='az')&&!getFeatureCtrl('settle','active')&&!isAdm){mc.innerHTML=isAdm?pgAdminSettle():pgSettle();}
   else if(CUR_TAB==='er'&&!getFeatureCtrl('emergency','active')&&!isAdm){mc.innerHTML=pgEmergencyContact();}
 }
+var _fcLoading=false;
 function getFeatureCtrl(feat, key){
-  if(!_featureControls) return true;
+  if(!_featureControls){
+    // 아직 로드 안 됨 → 백그라운드 로드 트리거 후 재렌더
+    if(!_fcLoading&&sbClient){
+      _fcLoading=true;
+      loadFeatureControls().then(function(){_fcLoading=false;_reRenderCurTab();}).catch(function(){_fcLoading=false;});
+    }
+    return true; // 로드 전 기본값: 활성 (로드 완료 후 재렌더됨)
+  }
   return (_featureControls[feat]||{})[key] !== false;
 }
 async function saveFeatureCtrl(feat, key, val){
@@ -1303,7 +1310,19 @@ async function saveFeatureCtrl(feat, key, val){
   if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}};
   if(!_featureControls[feat]) _featureControls[feat] = {active:true, notify:true};
   _featureControls[feat][key] = val;
-  await sbClient.from('app_settings').upsert({key:'feature_controls', value:JSON.stringify(_featureControls)},{onConflict:'key'});
+  // Supabase 저장 (실패 시 롤백 + 에러 알림)
+  var sbRes = await sbClient.from('app_settings').upsert(
+    {key:'feature_controls', value:JSON.stringify(_featureControls), updated_at:new Date().toISOString()},
+    {onConflict:'key'}
+  );
+  if(sbRes.error){
+    console.error('[FeatureCtrl] 저장 실패:', sbRes.error);
+    showToast('⚠ 설정 저장 실패 — 연결 상태 확인 후 재시도하세요', false);
+    // 메모리 값 롤백
+    _featureControls[feat][key] = !val;
+    return;
+  }
+  console.log('[FeatureCtrl] 저장 완료:', feat, key, val);
   var btnId = 'fc-'+feat+'-'+key;
   var btn = document.getElementById(btnId);
   if(btn){
@@ -1596,7 +1615,7 @@ function _fmtSchedDate(d){
   return p.length>=3?parseInt(p[1])+'월 '+parseInt(p[2])+'일':'';
 }
 
-// 스케줄 변경 알림 처리 — 관리자/팀장/조장/해당기사(이탈·신규 모두)
+// 스케줄 변경 알림 처리 — 관리자/팀장/해당기사(이탈·신규 모두)
 function _onSchedChange(e, old, changedBy){
   // 항상 화면 갱신
   syncFromSupabase().then(function(){_reRenderCurTab();});
@@ -1607,22 +1626,20 @@ function _onSchedChange(e, old, changedBy){
   var workDate=e.work_date||old.work_date||'';
   var route=e.route||old.route||'';
 
+  // ★ 과거 날짜 변경 → 알림 완전 무시
+  var todayStr=new Date().toISOString().slice(0,10);
+  if(workDate&&workDate<todayStr)return;
+
+  // ★ 알림 꺼짐 → 아무에게도 알림 안 보냄
+  if(!getFeatureCtrl('sched','notify'))return;
+
   // oldDriver === newDriver 이면 실제 변경 없음 → 무시
   if(oldDriver===newDriver&&oldDriver!=='')return;
 
-  // 조장(sub): grp_leaders에 내 이름 있어야 알림
-  var grpLeaders=[];
-  try{
-    var gl=e.grp_leaders||old.grp_leaders||'[]';
-    grpLeaders=typeof gl==='string'?JSON.parse(gl):gl;
-  }catch(err){}
-  var isMyGroupSub=(CU.role==='sub')&&grpLeaders.indexOf(CU.name)>=0;
-
-  // 알림 대상: 관리자, 팀장, 조장(내 그룹), 이탈기사(oldDriver), 신규기사(newDriver)
+  // 현재 앱 사용자 기준 알림 여부 (토스트 + 진동)
   var shouldNotify=
     CU.role==='admin' ||
     CU.role==='leader' ||
-    isMyGroupSub ||
     (CU.role==='driver'&&(CU.name===newDriver||CU.name===oldDriver));
   if(!shouldNotify)return;
 
@@ -1653,10 +1670,14 @@ function playTpalm(){
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
 }
 
-// ── 스케줄 변경 Push (admin/leader/sub 발송, 3초 디바운스 + 중복방지) ──────────
+// ── 스케줄 변경 Push (admin/leader 발송 주체, 관리자+팀장+해당기사만 수신) ─────
 function _queueSchedPush(workDate, route, oldDriver, newDriver){
   // 기사 역할은 발송 주체에서 제외 (받는 쪽만)
   if(!CU||CU.role==='driver')return;
+
+  // 과거 날짜 → 발송 안 함
+  var todayStr=new Date().toISOString().slice(0,10);
+  if(workDate&&workDate<todayStr)return;
 
   // 같은 변경을 이미 이 기기에서 push 했으면 skip (5분 내 중복 방지)
   var dedupKey='tf_spush_'+workDate+'_'+(route||'')+'_'+(newDriver||'')+'_'+(oldDriver||'');
@@ -1671,6 +1692,9 @@ function _queueSchedPush(workDate, route, oldDriver, newDriver){
   _schedPushTimer=setTimeout(function(){
     var changes=_schedPushChanges.splice(0);
     if(changes.length===0)return;
+    // ★ 알림꺼짐이면 아무에게도 발송 안 함
+    if(!getFeatureCtrl('sched','notify'))return;
+
     var title='📅 업무 변경 알림 '+changes.length+'건';
     var lines=changes.slice(0,4).map(function(c){
       var ds=_fmtSchedDate(c.workDate);
@@ -1684,7 +1708,24 @@ function _queueSchedPush(workDate, route, oldDriver, newDriver){
       return ds+' '+rStr+ch;
     });
     if(changes.length>4)lines.push('외 '+(changes.length-4)+'건 더');
-    if(getFeatureCtrl('sched','notify')) sendPushToAll(title,lines.join('\n'),'sched_'+Date.now());
+    var body=lines.join('\n');
+    var annId='sched_'+Date.now();
+
+    // ★ 수신 대상: 관리자·팀장만 전체, 해당 기사(oldDriver·newDriver)는 개인 발송
+    var db=getDB();
+    var targets=new Set();
+    Object.keys(db).forEach(function(nm){
+      var u=db[nm];
+      if(u&&(u.role==='admin'||u.role==='leader'))targets.add(nm);
+    });
+    changes.forEach(function(c){
+      if(c.oldDriver)targets.add(c.oldDriver);
+      if(c.newDriver)targets.add(c.newDriver);
+    });
+    targets.delete('');
+    targets.forEach(function(nm){
+      sendPushToAll(title,body,annId,nm);
+    });
   }, 3000); // 3초 후 일괄 발송
 }
 
@@ -1754,7 +1795,8 @@ function _reRenderCurTab(){
 tryAutoLogin();
 // 2) 어드민 설정 + 전체 동기화 (백그라운드)
 loadAdminCfgFromSB().then(function(){
-  return syncFromSupabase();
+  // syncFromSupabase + loadFeatureControls 병렬 실행 → 둘 다 완료 후 재렌더
+  return Promise.all([syncFromSupabase(), loadFeatureControls()]);
 }).then(function(){
   console.log('Supabase 동기화 완료');
   _reRenderCurTab();
@@ -1763,7 +1805,8 @@ loadAdminCfgFromSB().then(function(){
 // ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&sbClient){
-    syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
+    Promise.all([syncFromSupabase(), loadFeatureControls()])
+      .then(function(){_reRenderCurTab();}).catch(function(){});
   }
 });
 
@@ -1789,7 +1832,7 @@ document.addEventListener('visibilitychange',function(){
   setInterval(function(){
     if(!sbClient||document.hidden)return; // 화면이 꺼져있으면 생략
     var before=_awHash();
-    syncFromSupabase().then(function(){
+    Promise.all([syncFromSupabase(), loadFeatureControls()]).then(function(){
       var after=_awHash();
       // 항상 화면 갱신 (스크롤 위치 보존) — 변경 여부와 무관하게 최신 데이터 표시
       _reRenderCurTab();
@@ -4701,24 +4744,33 @@ function deleteAnn(id){
   }
   go(CU.role==='admin'?'ab':'nc');updateNavDots();
 }
-// 공지 비활성화 (admin 전용)
+// 공지 비활성화 (admin 전용) — 로컬+Supabase expire_at 과거로 설정
 function disableAnn(id){
   var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
   if(!a)return;
   a.disabled=true;
-  saveAnns(anns);
+  // expire_at을 1초 전으로 설정해 Supabase sync에서도 만료로 인식
+  a.expireAt=new Date(Date.now()-1000).toISOString();
+  localStorage.setItem('tfann',JSON.stringify(anns));
+  if(sbClient&&a.sb_id){
+    sbClient.from('announcements').update({expire_at:a.expireAt}).eq('id',a.sb_id)
+      .then(function(){}).catch(function(e){console.warn('[disableAnn SB]',e);});
+  }
   go(CU.role==='admin'?'ab':'nc');
 }
-// 공지 재게시 (admin 전용) — 만료됐으면 30일 연장
+// 공지 재게시 (admin 전용) — 30일 연장 + Supabase 동기화
 function enableAnn(id){
   var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
   if(!a)return;
   a.disabled=false;
-  if(a.expireAt&&isAnnExpired(a)){
-    a.expireAt=new Date(Date.now()+30*24*60*60*1000).toISOString();
-    a.expireDays=30;
+  var newExpire=new Date(Date.now()+30*24*60*60*1000).toISOString();
+  a.expireAt=newExpire;
+  a.expireDays=30;
+  localStorage.setItem('tfann',JSON.stringify(anns));
+  if(sbClient&&a.sb_id){
+    sbClient.from('announcements').update({expire_at:newExpire}).eq('id',a.sb_id)
+      .then(function(){}).catch(function(e){console.warn('[enableAnn SB]',e);});
   }
-  saveAnns(anns);
   go(CU.role==='admin'?'ab':'nc');
 }
 function selectAnnEditExpire(v){
