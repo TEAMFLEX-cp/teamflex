@@ -6915,6 +6915,7 @@ async function loadFreshStatus(){
   routes.forEach(function(r){
     totTotal+=(r.total||0);totScanned+=(r.scanned||0);totDone+=(r.completed||0);totUndel+=(r.undelivered||0);totPdd+=(r.pdd_miss||0);
   });
+  var doneRate=totTotal>0?Math.round(totDone/totTotal*100):0;
   // 고정바 신선 탭에 2회전 수량 표시
   _freshNavTotal=totTotal;
   updateNavDots();
@@ -6942,4 +6943,24 @@ async function loadFreshStatus(){
     '<th style="padding:8px 6px;text-align:left;border-bottom:2px solid #a5d6a7">라우트</th>'+
     '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">수량</th>'+
     '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">스캔</th>'+
-    '<th style="padding:8px 6px;text-alig
+    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">완료</th>'+
+    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">미배송</th>'+
+    '<th style="padding:8px 6px;text-align:center;border-bottom:2px solid #a5d6a7">PDD miss</th>'+
+    '</tr></thead><tbody>';
+  var rows=routes.map(function(r){
+    return '<tr>'+
+    '<td style="padding:6px 8px;text-align:left">'+(r.route||'?')+'</td>'+
+    '<td style="text-align:center">'+(r.total||0)+'</td>'+
+    '<td style="text-align:center">'+(r.scanned||0)+'</td>'+
+    '<td style="text-align:center">'+(r.completed||0)+'</td>'+
+    '<td style="text-align:center">'+(r.undelivered||0)+'</td>'+
+    '<td style="text-align:center;color:'+(r.pdd_miss>0?'#c62828':'#9e9e9e')+';font-weight:'+(r.pdd_miss>0?'700':'400')+'">'+(r.pdd_miss||0)+'</td>'+
+      '</tr>';
+  }).join('');
+  tbl.innerHTML=hdr+rows+'</tbody></table></div>';
+}
+
+
+
+</script>
+</body></html>
