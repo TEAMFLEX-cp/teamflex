@@ -2921,11 +2921,11 @@ function go(tab){
   if(tab==='hm')mc.innerHTML=pgHome();
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
-  else if(tab==='fs'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient)schedRefresh();},300);}
+  else if(tab==='fs'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},300);}
   else if(tab==='st'){mc.innerHTML=pgSettle();mc.scrollTop=0;window.scrollTo(0,0);if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='st'){mc.innerHTML=pgSettle();mc.scrollTop=0;}}).catch(function(){});}
   else if(tab==='aa')mc.innerHTML=pgApproval();
   else if(tab==='ab')mc.innerHTML=pgAnn(true);
-  else if(tab==='as'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient)schedRefresh();},300);}
+  else if(tab==='as'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},300);}
   else if(tab==='az'){mc.innerHTML=pgAdminSettle();if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='az')mc.innerHTML=pgAdminSettle();}).catch(function(){});}
   else if(tab==='ap')mc.innerHTML=pgPermissions();
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
@@ -3700,7 +3700,7 @@ function moveSchedWeek(delta){
   document.getElementById('mc').innerHTML=pgFullSched();
   requestAnimationFrame(initSchedScrollSync);
   // 해당 주차 데이터가 없거나 share 정보가 필요한 경우 Supabase에서 자동 로드
-  setTimeout(function(){if(sbClient)schedRefresh();},200);
+  setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},200);
 }
 function toggleEdit(){
   if(!EDIT_MODE && CU && CU.role!=='admin'){
