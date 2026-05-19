@@ -2443,15 +2443,15 @@ function launchApp(){
   var bn=document.getElementById('bn');
   if(CU.role==='admin'){
     bn.innerHTML=
-      '<div class="ni on" id="ni-aa" onclick="go(\'aa\')"><span class="nicon">&#x2705;</span>승인관리</div>'+
-      '<div class="ni" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
+      '<div class="ni on" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
       '<div class="ni" id="ni-ab" onclick="go(\'ab\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-as" onclick="go(\'as\')"><span class="nicon">&#x1F4C5;</span>스케줄</div>'+
+      '<div class="ni" id="ni-sl" onclick="go(\'sl\')"><span class="nicon">&#x1F4CB;</span>변경이력</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
       '<div class="ni" id="ni-az" onclick="go(\'az\')"><span class="nicon">&#x1F4B0;</span>정산</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
-    go('aa');
+    go('hm');
   } else if(CU.status==='suspended'){
     // 정지된 기사: 정산 탭만 접근 가능
     bn.innerHTML=
@@ -2899,6 +2899,8 @@ function updateNavDots(){
 var _navHistory=[];
 var _lastBackMs=0;
 function go(tab){
+  // 설정 서브메뉴 시트가 열려있으면 닫기
+  var _cfgSheet=document.getElementById('cfg-sub-sheet');if(_cfgSheet)_cfgSheet.remove();
   if(CUR_TAB&&CUR_TAB!==tab)_navHistory.push(CUR_TAB);
   EDIT_MODE=false;CUR_TAB=tab;
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
