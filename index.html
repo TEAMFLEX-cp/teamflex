@@ -910,6 +910,13 @@ async function syncFromSupabase(){
         if(monthNum<1||monthNum>12)return;
         var mIdx=String(monthNum-1); // 1월→'0', 2월→'1', 3월→'2' …
         if(!SM[nm])SM[nm]={};
+        // ── 헤더에 해당 월 정산 문자열이 있는 기존 슬롯 우선 탐색 ─────────
+        // 엑셀 파싱 슬롯 인덱스와 Supabase 월 인덱스가 다를 때 합치기 방지
+        var targetLabel=String(monthNum)+'월 정산';
+        Object.keys(SM[nm]).forEach(function(k){
+          var e=SM[nm][k];
+          if(e&&e.header&&e.header.indexOf(targetLabel)>=0)mIdx=k;
+        });
         var existing=SM[nm][mIdx];
         var hasDetail=existing&&existing.revenue_rows&&existing.revenue_rows.length>0;
         if(hasDetail){
@@ -917,6 +924,7 @@ async function syncFromSupabase(){
           SM[nm][mIdx].total_rev=r.gross||0;
           SM[nm][mIdx].net_pay=r.net||0;
           SM[nm][mIdx].total_deduction=(r.gross||0)-(r.net||0);
+          SM[nm][mIdx]._from_supabase=false; // 상세내역 있음 → 간략뷰 비활성화
         }else{
           // 1순위: 상세내역 없음 → Supabase 금액만 표시 엔트리 생성
           SM[nm][mIdx]={
@@ -4406,8 +4414,10 @@ function pgAdminSettle(){
       '<div style="display:flex;align-items:center;gap:12px">'+
       '<div style="width:26px;text-align:center;font-size:13px;color:#999;font-weight:700">'+(i+1)+'</div>'+
       '<div class="aav" style="width:36px;height:36px;font-size:13px">'+d.name.slice(0,1)+'</div>'+
-      '<div style="flex:1"><div style="font-size:15px;font-weight:700">'+d.name+'</div></div>'+
-      '<div style="font-size:15px;font-weight:800;color:#1565c0">'+fmt(d.net_pay)+'원</div></div>'+
+      '<div style="flex:1"><div style="font-size:15px;font-weight:700">'+d.name+'</div>'+
+      '<div style="font-size:11px;color:#3949ab;margin-top:2px">세금계산서 '+fmt(d.total_rev||0)+'원</div></div>'+
+      '<div style="text-align:right"><div style="font-size:11px;color:#888;margin-bottom:2px">지급액</div>'+
+      '<div style="font-size:15px;font-weight:800;color:#1565c0">'+fmt(d.net_pay)+'원</div></div></div>'+
       '<div id="d'+i+'" style="display:none;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+renderSettleDetail(d)+'</div></div>';
   });
   return h;
@@ -4611,10 +4621,12 @@ function pgAdminSettle(){
   all=all.filter(function(d){return d&&d.name;});
   all.sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');});
   var total=all.reduce(function(s,d){return s+(d.net_pay||0);},0);
+  var totalRev=all.reduce(function(s,d){return s+(d.total_rev||0);},0);
   var h=stickyTabs+
     '<div class="stit" style="margin-top:10px">&#x1F4B0; 전체 정산 (2026년 '+monthNames[SETTLE_ADMIN_MONTH]+')</div>'+
     '<div class="card" style="margin-bottom:14px">'+
     '<div class="dr"><span class="dl">총 기사 수</span><span class="dv">'+all.length+'명</span></div>'+
+    '<div class="dr"><span class="dl">세금계산서 합계</span><span class="dv" style="color:#3949ab;font-weight:800">'+fmt(totalRev)+'원</span></div>'+
     '<div class="dr"><span class="dl">총 지급액 합계</span><span class="dv db">'+fmt(total)+'원</span></div></div>';
   h=_featureBar('settle')+h;
   all.forEach(function(d,i){
@@ -4622,8 +4634,10 @@ function pgAdminSettle(){
       '<div style="display:flex;align-items:center;gap:12px">'+
       '<div style="width:26px;text-align:center;font-size:13px;color:#999;font-weight:700">'+(i+1)+'</div>'+
       '<div class="aav" style="width:36px;height:36px;font-size:13px">'+d.name.slice(0,1)+'</div>'+
-      '<div style="flex:1"><div style="font-size:15px;font-weight:700">'+d.name+'</div></div>'+
-      '<div style="font-size:15px;font-weight:800;color:#1565c0">'+fmt(d.net_pay)+'원</div></div>'+
+      '<div style="flex:1"><div style="font-size:15px;font-weight:700">'+d.name+'</div>'+
+      '<div style="font-size:11px;color:#3949ab;margin-top:2px">세금계산서 '+fmt(d.total_rev||0)+'원</div></div>'+
+      '<div style="text-align:right"><div style="font-size:11px;color:#888;margin-bottom:2px">지급액</div>'+
+      '<div style="font-size:15px;font-weight:800;color:#1565c0">'+fmt(d.net_pay)+'원</div></div></div>'+
       '<div id="d'+i+'" style="display:none;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+renderSettleDetail(d)+'</div></div>';
   });
   return h;
