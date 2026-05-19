@@ -193,6 +193,7 @@ table.ft tr:hover td{background:#f8f9ff}
 table.ft tr:hover td.rtd{background:#eaecf8}
 @keyframes tod-pulse{0%,100%{opacity:1;text-shadow:0 0 6px rgba(255,109,0,.9)}50%{opacity:.6;text-shadow:none}}
 table.ft td.tod-col{border-left:4px solid #FF6D00 !important;border-right:4px solid #FF6D00 !important;background:rgba(255,235,59,.18) !important;color:#1a1a1a !important}
+table.ft tr:last-child td.tod-col{border-bottom:4px solid #FF6D00 !important}
 table.ft th.tod-col{border-left:4px solid #FF6D00 !important;border-right:4px solid #FF6D00 !important;border-top:4px solid #FF6D00 !important;position:relative;background:rgba(255,109,0,.13) !important;color:#bf360c !important}
 .tod-badge{font-size:10px;color:#FF6D00;font-weight:900;display:block;margin-top:2px;animation:tod-pulse 1.4s ease-in-out infinite;letter-spacing:.3px}
 table.ft td.sat-col{background:#fff3e0}
@@ -4607,7 +4608,8 @@ function pgAdminSettle(){
       all.push(smData[String(SETTLE_ADMIN_MONTH)]);
     }
   });
-  all.sort(function(a,b){return a.name.localeCompare(b.name,'ko');});
+  all=all.filter(function(d){return d&&d.name;});
+  all.sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');});
   var total=all.reduce(function(s,d){return s+(d.net_pay||0);},0);
   var h=stickyTabs+
     '<div class="stit" style="margin-top:10px">&#x1F4B0; 전체 정산 (2026년 '+monthNames[SETTLE_ADMIN_MONTH]+')</div>'+
