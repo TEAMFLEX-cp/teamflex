@@ -1081,7 +1081,10 @@ async function schedRefresh(){
       })};
     });
     var wEnd=r.data[0].week_end||ws;
-    AW[ws]={s:ws,e:wEnd,dt:dates,dl:dlbls,g:groups};
+    // 기사 배정 데이터 있을 때만 AW 덮어쓰기 (없으면 하드코딩 데이터 유지)
+    if(_hasDriverData){
+      AW[ws]={s:ws,e:wEnd,dt:dates,dl:dlbls,g:groups};
+    }
     // ── 이 주차 override 전부 삭제 (Supabase가 진실) ────────────────
     var ovr=getSchedOvr();var ovrChg=false;
     var ovrKeys209=Object.keys(ovr).filter(function(k){return k.split('|||')[0]===ws&&k.indexOf('209')>=0;});
