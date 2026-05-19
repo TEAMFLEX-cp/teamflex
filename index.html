@@ -4071,29 +4071,31 @@ function renderSettleDetail(s){
   var hdrLine=s.header||'';
   var revRows=s.revenue_rows||[];
   var revTbody=revRows.map(function(r){
-    var qtyFmt=r.qty?r.qty.toLocaleString('ko-KR'):'-';
+    var qtyFmt=r.qty?r.qty.toLocaleString('ko-KR')+' 건':'-';
     var priceFmt=r.price?fmt(r.price)+'원':'-';
     var subFmt=r.subtotal?fmt(r.subtotal)+'원':'-';
     return '<tr>'+
-      '<td style="text-align:left;font-weight:600;word-break:keep-all;white-space:normal;line-height:1.3;overflow:hidden">'+r.name+
-        '<div style="font-size:10px;color:#5c6bc0;margin-top:2px">'+r.type+'</div></td>'+
-      '<td style="text-align:right;font-size:11px">'+qtyFmt+'</td>'+
-      '<td style="text-align:right;font-size:11px">'+priceFmt+'</td>'+
+      '<td style="text-align:left;font-weight:600;word-break:keep-all;white-space:normal;line-height:1.3">'+r.name+
+        '<div style="font-size:10px;color:#5c6bc0;margin-top:1px">'+r.type+'</div></td>'+
+      '<td style="text-align:center;font-size:10px;line-height:1.5">'+
+        '<div>'+qtyFmt+'</div>'+
+        '<div style="color:#888">'+priceFmt+'</div></td>'+
       '<td style="text-align:right;font-weight:700;color:#1565c0;font-size:11px">'+subFmt+'</td></tr>';
   }).join('');
   var totalQty=(s.total_rev_qty||0).toLocaleString('ko-KR');
   var totalRev=fmt(s.total_rev||0);
   var supplyRow=s.supply_price?
-    '<tr style="background:#f3f4ff"><td colspan="3" style="text-align:right;color:#666;font-size:11px;padding-right:6px">공급가액</td>'+
-    '<td style="text-align:right;font-weight:700;color:#3949ab;font-size:12px">'+fmt(s.supply_price||0)+'원</td></tr>':'';
+    '<tr style="background:#f3f4ff"><td colspan="2" style="text-align:right;color:#666;font-size:10px;padding-right:6px">공급가액</td>'+
+    '<td style="text-align:right;font-weight:700;color:#3949ab;font-size:11px">'+fmt(s.supply_price||0)+'원</td></tr>':'';
   var revTable='<table class="dt" style="width:100%;table-layout:fixed">'+
-    '<colgroup><col style="width:30%"><col style="width:13%"><col style="width:25%"><col style="width:32%"></colgroup>'+
+    '<colgroup><col style="width:42%"><col style="width:26%"><col style="width:32%"></colgroup>'+
     '<thead><tr>'+
     '<th style="text-align:left;padding-left:4px;font-size:11px">내역/구분</th>'+
-    '<th style="text-align:right;font-size:11px">수량</th><th style="text-align:right;font-size:11px">단가</th><th style="text-align:right;font-size:11px">소계</th>'+
+    '<th style="text-align:center;font-size:11px">수량/단가</th>'+
+    '<th style="text-align:right;font-size:11px">소계</th>'+
     '</tr></thead><tbody>'+revTbody+
     '<tr style="background:#e8f5e9;font-weight:700">'+
-    '<td colspan="3" style="text-align:right;padding-right:6px;color:#1b5e20;font-size:10px">총 매출액 '+totalQty+'건</td>'+
+    '<td colspan="2" style="text-align:right;padding-right:6px;color:#1b5e20;font-size:10px">총 매출액 '+totalQty+'건</td>'+
     '<td style="text-align:right;color:#1565c0;font-size:11px;font-weight:800">'+totalRev+'원</td></tr>'+
     supplyRow+
     '</tbody></table>';
