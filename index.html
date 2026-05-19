@@ -100,7 +100,7 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .pcard p{font-size:14px;color:#666;line-height:1.6;margin-bottom:20px}
 .btn-s{background:#e8eaf6;color:#3949ab;border:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;display:flex;align-items:flex-end;justify-content:center}
-.modal-sheet{background:#fff;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:500px;animation:su .3s ease;max-height:90vh;overflow-y:auto}
+.modal-sheet{background:#fff;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:500px;animation:su .3s ease;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .modal-mid{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal-box{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:460px;max-height:85vh;overflow-y:auto}
 @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -593,7 +593,19 @@ textarea.ann-input:focus{border-color:#1565c0}
       <input type="hidden" id="ann-edit-id">
       <div class="fg"><label>제목</label><input type="text" id="ann-edit-title" placeholder="공지 제목"></div>
       <div class="fg"><label>내용</label><textarea class="ann-input" id="ann-edit-body" placeholder="공지 내용"></textarea></div>
-      <div class="checkbox-row"><input type="checkbox" id="ann-edit-imp"><label for="ann-edit-imp">&#x26A0; 중요 공지</label></div>
+      <div class="checkbox-row" id="ann-edit-imp-row"><input type="checkbox" id="ann-edit-imp"><label for="ann-edit-imp">&#x26A0; 중요 공지</label></div>
+      <div class="fg">
+        <label>게시 기간</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+          <span id="ann-edit-exp-lbl-keep" onclick="document.querySelector('[name=ann-edit-expire][value=keep]').checked=true;selectAnnEditExpire('keep')" style="padding:6px 12px;border-radius:20px;border:1.5px solid #1565c0;background:#e3f2fd;font-size:12px;cursor:pointer;font-weight:700;color:#1565c0;user-select:none"><input type="radio" name="ann-edit-expire" value="keep" style="display:none" checked>유지</span>
+          <span id="ann-edit-exp-lbl-1"    onclick="document.querySelector('[name=ann-edit-expire][value=\'1\']').checked=true;selectAnnEditExpire('1')"    style="padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;font-weight:400;color:#555;user-select:none"><input type="radio" name="ann-edit-expire" value="1"    style="display:none">1일</span>
+          <span id="ann-edit-exp-lbl-3"    onclick="document.querySelector('[name=ann-edit-expire][value=\'3\']').checked=true;selectAnnEditExpire('3')"    style="padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;font-weight:400;color:#555;user-select:none"><input type="radio" name="ann-edit-expire" value="3"    style="display:none">3일</span>
+          <span id="ann-edit-exp-lbl-7"    onclick="document.querySelector('[name=ann-edit-expire][value=\'7\']').checked=true;selectAnnEditExpire('7')"    style="padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;font-weight:400;color:#555;user-select:none"><input type="radio" name="ann-edit-expire" value="7"    style="display:none">7일</span>
+          <span id="ann-edit-exp-lbl-15"   onclick="document.querySelector('[name=ann-edit-expire][value=\'15\']').checked=true;selectAnnEditExpire('15')"   style="padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;font-weight:400;color:#555;user-select:none"><input type="radio" name="ann-edit-expire" value="15"   style="display:none">15일</span>
+          <span id="ann-edit-exp-lbl-30"   onclick="document.querySelector('[name=ann-edit-expire][value=\'30\']').checked=true;selectAnnEditExpire('30')"   style="padding:6px 12px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;font-weight:400;color:#555;user-select:none"><input type="radio" name="ann-edit-expire" value="30"   style="display:none">30일</span>
+        </div>
+        <div id="ann-edit-expire-info" style="font-size:11px;color:#888;min-height:16px"></div>
+      </div>
       <div class="errmsg" id="ann-edit-err"></div>
       <div style="display:flex;gap:8px">
         <button class="btn-s" style="flex:1" onclick="closeAnnEdit()">취소</button>
@@ -1818,14 +1830,14 @@ function openCfgSubMenu(){
       '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px"></div>'+
       '<div style="font-size:16px;font-weight:900;color:#1a237e;margin-bottom:18px;text-align:center">&#x2699;&#xFE0F; 관리 메뉴</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px">'+
-        '<button onclick="closeCfgSubMenu();go(\'ap\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f3f4ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#3949ab;cursor:pointer;text-align:left">'+
-          '<span style="font-size:24px">&#x1F6E1;</span><div><div>권한 관리</div><div style="font-size:11px;font-weight:400;color:#7986cb;margin-top:2px">스케줄 수정 권한 설정</div></div>'+
+        '<button onclick="closeCfgSubMenu();go(\'ap\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f3f4ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#3949ab;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x1F6E1;</span><div style="flex:1;min-width:0"><div>권한 관리</div><div style="font-size:11px;font-weight:400;color:#7986cb;margin-top:2px">스케줄 수정 권한 설정</div></div>'+
         '</button>'+
-        '<button onclick="closeCfgSubMenu();go(\'ph\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f0f4ff;border:2px solid #bbdefb;border-radius:14px;font-size:15px;font-weight:700;color:#1565c0;cursor:pointer;text-align:left">'+
-          '<span style="font-size:24px">&#x1F4DE;</span><div><div>연락처 관리</div><div style="font-size:11px;font-weight:400;color:#64b5f6;margin-top:2px">기사 연락처 등록·수정</div></div>'+
+        '<button onclick="closeCfgSubMenu();go(\'ph\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f0f4ff;border:2px solid #bbdefb;border-radius:14px;font-size:15px;font-weight:700;color:#1565c0;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x1F4DE;</span><div style="flex:1;min-width:0"><div>연락처 관리</div><div style="font-size:11px;font-weight:400;color:#64b5f6;margin-top:2px">기사 연락처 등록·수정</div></div>'+
         '</button>'+
-        '<button onclick="closeCfgSubMenu();go(\'cfg\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left">'+
-          '<span style="font-size:24px">&#x2699;&#xFE0F;</span><div><div>시스템 설정</div><div style="font-size:11px;font-weight:400;color:#9fa8da;margin-top:2px">관리자 계정·스케줄 잠금·Teams 연동</div></div>'+
+        '<button onclick="closeCfgSubMenu();go(\'cfg\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x2699;&#xFE0F;</span><div style="flex:1;min-width:0"><div>시스템 설정</div><div style="font-size:11px;font-weight:400;color:#9fa8da;margin-top:2px;white-space:normal;word-break:keep-all">관리자 계정·스케줄 잠금·Teams 연동</div></div>'+
         '</button>'+
       '</div>'+
     '</div>';
@@ -2948,7 +2960,7 @@ function go(tab){
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
   else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(mdLoadCases,200);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
-  else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}
+  else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
   if(CU&&tab!=='nc'&&tab!=='ab'){setTimeout(function(){checkUnreadAnns(true);},300);}
 }
@@ -2960,7 +2972,7 @@ function checkUnreadAnns(impOnly, chainCb){
   if(document.getElementById('ann-popup').style.display!=='none')return;
   // chainCb가 명시적으로 전달된 경우에만 덮어씀 (탭 이동 등의 자동 호출로 콜백이 사라지는 버그 방지)
   if(chainCb !== undefined) _annChainCb=chainCb;
-  var anns=getAnns();
+  var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled;});
   ANN_QUEUE=anns.filter(function(a){
     var unread=(!a.readBy||a.readBy.indexOf(CU.name)<0);
     return impOnly?(unread&&a.important):unread;
@@ -3437,7 +3449,11 @@ function showDailyGreeting(){
 
 // ── getAnnsVisible ────────────────────────────────────────────────────
 function getAnnsVisible(){
-  return getAnns().filter(function(a){return !isAnnExpired(a);});
+  var isAdm=CU&&CU.role==='admin';
+  return getAnns().filter(function(a){
+    if(isAdm)return true;
+    return !isAnnExpired(a)&&!a.disabled;
+  });
 }
 
 
@@ -3450,17 +3466,42 @@ function pgAnn(isAdmin){
   }
   var anns=getAnns();
   var writeBtn=canAnn()?'<button class="btn-ok" style="margin-bottom:14px" onclick="openAnnWrite()">&#x270F; 공지 작성</button>':'';
-  var cards=anns.length===0?'<div class="empty"><div class="ei">&#x1F4EC;</div><p>공지사항이 없습니다.</p></div>':
-    anns.slice().reverse().map(function(a){
-      var isUnread=!a.readBy||a.readBy.indexOf(CU.name)<0;
+  // 만료/비활성 필터링
+  var visibleAnns=anns.slice().reverse().filter(function(a){
+    if(isAdm)return true; // 관리자는 모두 표시
+    if(a.disabled)return false; // 비활성화된 공지 숨김
+    if(isAnnExpired(a))return false; // 만료 공지 숨김
+    return true;
+  });
+  var cards=visibleAnns.length===0?'<div class="empty"><div class="ei">&#x1F4EC;</div><p>공지사항이 없습니다.</p></div>':
+    visibleAnns.map(function(a){
+      var isExpired=isAnnExpired(a);
+      var isDisabled=!!a.disabled;
+      var isBlinded=isExpired||isDisabled;
+      var isUnread=!isBlinded&&(!a.readBy||a.readBy.indexOf(CU.name)<0);
       var cardBtns='';
-      if(canDeleteAnn(a))cardBtns+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
-      if(canEditAnn(a))cardBtns+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
-      return '<div class="ann-card'+(a.important?' imp':'')+'" onclick="openAnnView('+a.id+')">'+
-        '<div class="ann-hdr">'+(a.important?'<span class="imp-badge">&#x2757; 중요</span>':'')+
+      if(isAdm){
+        // 관리자: 비활성화·재게시·삭제 버튼
+        if(!isBlinded){
+          cardBtns+='<button onclick="event.stopPropagation();disableAnn('+a.id+')" style="background:none;border:none;color:#e65100;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">⛔비활성</button>';
+        } else {
+          cardBtns+='<button onclick="event.stopPropagation();enableAnn('+a.id+')" style="background:none;border:none;color:#2e7d32;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">✅재게시</button>';
+        }
+        if(canDeleteAnn(a))cardBtns+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
+        if(canEditAnn(a)&&!isBlinded)cardBtns+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
+      } else {
+        if(canDeleteAnn(a))cardBtns+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
+        if(canEditAnn(a))cardBtns+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
+      }
+      var blindBadge='';
+      if(isAdm&&isDisabled)blindBadge='<span style="font-size:10px;background:#e65100;color:#fff;border-radius:10px;padding:1px 7px;margin-right:6px">⛔비활성</span>';
+      else if(isAdm&&isExpired)blindBadge='<span style="font-size:10px;background:#888;color:#fff;border-radius:10px;padding:1px 7px;margin-right:6px">만료됨</span>';
+      var cardStyle='class="ann-card'+(a.important&&!isBlinded?' imp':'')+'" style="opacity:'+(isBlinded?'.55':'1')+'"';
+      return '<div '+cardStyle+' onclick="'+(isBlinded?'':'openAnnView('+a.id+')')+'">'+
+        '<div class="ann-hdr">'+blindBadge+(a.important&&!isBlinded?'<span class="imp-badge">&#x2757; 중요</span>':'')+
         '<div class="ann-title">'+(isUnread?'<b>':'')+'['+a.at.slice(0,10)+'] '+a.title+(isUnread?'</b>':'')+'</div>'+cardBtns+'</div>'+
         '<div class="ann-meta">'+a.author+' &middot; '+a.at+
-          '<span style="margin-left:10px;font-size:11px;color:'+(isUnread?'#e53935':'#bbb')+'">'+(isUnread?'● 미확인':'✓ 확인')+'</span>'+
+          (isBlinded?'':'<span style="margin-left:10px;font-size:11px;color:'+(isUnread?'#e53935':'#bbb')+'">'+(isUnread?'● 미확인':'✓ 확인')+'</span>')+
         '</div></div>';
     }).join('');
   return (isAdmin?_featureBar('ann'):'')+
@@ -3613,9 +3654,9 @@ function pgSchedLog(){
         changeHtml='<span style="color:#90CAF9">변경됨</span>';
       }
       var newBadge=!e.read?'<span style="background:#E53935;color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">NEW</span>':'';
-      // 관리자: 변경자 정보 표시
+      // 변경자 정보 표시 (모든 역할)
       var adminFooter='';
-      if(isAdmin&&e.changedBy){
+      if(e.changedBy){
         var whoLabel=e.changedBy==='PC'?'PC 스케줄 프로그램':e.changedBy;
         adminFooter='<div style="margin-top:8px;padding-top:7px;border-top:1px solid #1E3A5A;font-size:11px;color:#7AAAC8">'
           +'<span style="margin-right:8px">🖊 변경자: <b style="color:#90CAF9">'+whoLabel+'</b></span>'
@@ -4382,80 +4423,7 @@ async function unkickDriver(n){
 function blockDriver(n){kickDriver(n);}
 function unblockDriver(n){unkickDriver(n);}
 
-// ── ADMIN: ALL SETTLEMENT ─────────────────────────────────────────────
-function pgAdminSettle(){
-  var monthNames=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  var avail={};
-  Object.values(SM).forEach(function(sm){Object.keys(sm).forEach(function(k){avail[parseInt(k)]=1;});});
-  var availMonths=Object.keys(avail).map(Number).sort();
-  if(SETTLE_ADMIN_MONTH<0)SETTLE_ADMIN_MONTH=availMonths[availMonths.length-1]||2;
-  var tabs=availMonths.map(function(m){
-    var isOn=(m===SETTLE_ADMIN_MONTH);
-    return '<button onclick="setAdminMonth('+m+')" style="padding:7px 16px;border:none;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;background:'+(isOn?'#1565c0':'#e8eaf6')+';color:'+(isOn?'#fff':'#3949ab')+';">'+monthNames[m]+'</button>';
-  }).join('');
-  var stickyTabs='<div class="sched-sticky-nav" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-    '<span style="font-size:13px;font-weight:700;color:#666;margin-right:4px">&#x1F4C5; 월 선택:</span>'+tabs+'</div>';
-  var all=[];
-  Object.entries(SM).forEach(function(kv){
-    var name=kv[0];var smData=kv[1];
-    if(smData[String(SETTLE_ADMIN_MONTH)]){all.push(Object.assign({name:name},smData[String(SETTLE_ADMIN_MONTH)]));}
-  });
-  all.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
-  var total=all.reduce(function(s,d){return s+(d.net_pay||0);},0);
-  var totalRev=all.reduce(function(s,d){return s+(d.total_rev||0);},0);
-  var h=stickyTabs+
-    '<div class="stit" style="margin-top:10px">&#x1F4B0; 전체 정산 (2026년 '+monthNames[SETTLE_ADMIN_MONTH]+')</div>'+
-    '<div class="card" style="margin-bottom:14px">'+
-    '<div class="dr"><span class="dl">총 기사 수</span><span class="dv">'+all.length+'명</span></div>'+
-    '<div class="dr"><span class="dl">총 매입 세금계산서</span><span class="dv db">'+fmt(totalRev)+'원</span></div>'+
-    '<div class="dr"><span class="dl">총 기사 지급금액</span><span class="dv db">'+fmt(total)+'원</span></div></div>';
-  all.forEach(function(d,i){
-    h+='<div class="ac" style="cursor:pointer" onclick="tog(\'d'+i+'\')">'+
-      '<div style="display:flex;align-items:center;gap:12px">'+
-      '<div style="width:26px;text-align:center;font-size:13px;color:#999;font-weight:700">'+(i+1)+'</div>'+
-      '<div class="aav" style="width:36px;height:36px;font-size:13px">'+d.name.slice(0,1)+'</div>'+
-      '<div style="flex:1"><div style="font-size:15px;font-weight:700">'+d.name+'</div>'+
-      '<div style="font-size:11px;color:#3949ab;margin-top:2px">세금계산서 '+fmt(d.total_rev||0)+'원</div></div>'+
-      '<div style="text-align:right"><div style="font-size:11px;color:#888;margin-bottom:2px">지급액</div>'+
-      '<div style="font-size:15px;font-weight:800;color:#1565c0">'+fmt(d.net_pay)+'원</div></div></div>'+
-      '<div id="d'+i+'" style="display:none;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+renderSettleDetail(d)+'</div></div>';
-  });
-  return h;
-}
-function setAdminMonth(m){SETTLE_ADMIN_MONTH=m;document.getElementById('mc').innerHTML=pgAdminSettle();}
-function tog(id){var e=document.getElementById(id);if(e)e.style.display=(e.style.display==='none'?'':'none');}
-
-// ── PASSWORD MANAGEMENT ────────────────────────────────────────────────
-function openSettings(){go('dv');}
-function openPwModal(){document.getElementById('pw-modal').style.display='';}
-function closePwModal(){document.getElementById('pw-modal').style.display='none';}
-function submitPwChange(){
-  var cur=document.getElementById('pw-cur').value;
-  var n1=document.getElementById('pw-new1').value;
-  var n2=document.getElementById('pw-new2').value;
-  document.getElementById('pw-err').textContent='';
-  if(CU.role==='admin'){
-    var cfg=getCfg();
-    var curPw=cfg.adminPw||ROOT_ADMIN.pw; // cfg 없으면 ROOT_ADMIN 기본값
-    if(cur!==curPw){document.getElementById('pw-err').textContent='현재 비밀번호가 틀립니다.';return;}
-    if(n1.length<4){document.getElementById('pw-err').textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
-    if(n1!==n2){document.getElementById('pw-err').textContent='비밀번호가 일치하지 않습니다.';return;}
-    var curId=cfg.adminId||ROOT_ADMIN.id;
-    cfg.adminId=curId;cfg.adminPw=n1;saveCfg(cfg);
-    closePwModal();alert('비밀번호가 변경되었습니다. 다시 로그인해주세요.');doLogout();return;
-  }
-  var db=getDB();var drv=db[CU.name];
-  if(!drv||drv.password!==cur){document.getElementById('pw-err').textContent='현재 비밀번호가 틀립니다.';return;}
-  if(n1.length<4){document.getElementById('pw-err').textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
-  if(n1!==n2){document.getElementById('pw-err').textContent='비밀번호가 일치하지 않습니다.';return;}
-  drv.password=n1;saveDB(db);closePwModal();alert('비밀번호가 변경되었습니다.');
-}
-function resetDriverPw(name){
-  if(!confirm(name+' 기사의 비밀번호를 1234로 초기화하시겠습니까?'))return;
-  var db=getDB();
-  if(db[name]){db[name].password='1234';saveDB(db);}
-  alert(name+' 기사 비밀번호가 1234로 초기화되었습니다.');
-}
+// (구버전 pgAdminSettle/setAdminMonth/tog/PASSWORD MANAGEMENT 중복 제거 — 아래 최신 버전 사용)
 
 // ── ANNOUNCEMENT MANAGEMENT ────────────────────────────────────────────
 function canDeleteAnn(a){return CU&&(CU.role==='admin'||a.author===CU.name);}
@@ -4474,6 +4442,26 @@ function deleteAnn(id){
       .catch(function(e){console.warn('[deleteAnn] Supabase 삭제 실패',e);});
   }
   go(CU.role==='admin'?'ab':'nc');updateNavDots();
+}
+// 공지 비활성화 (admin 전용)
+function disableAnn(id){
+  var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
+  if(!a)return;
+  a.disabled=true;
+  saveAnns(anns);
+  go(CU.role==='admin'?'ab':'nc');
+}
+// 공지 재게시 (admin 전용) — 만료됐으면 30일 연장
+function enableAnn(id){
+  var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
+  if(!a)return;
+  a.disabled=false;
+  if(a.expireAt&&isAnnExpired(a)){
+    a.expireAt=new Date(Date.now()+30*24*60*60*1000).toISOString();
+    a.expireDays=30;
+  }
+  saveAnns(anns);
+  go(CU.role==='admin'?'ab':'nc');
 }
 function selectAnnEditExpire(v){
   var ids=['keep',1,3,7,15,30];
@@ -4674,48 +4662,7 @@ function resetDriverPw(name){
   alert(name+' 기사 비밀번호가 1234로 초기화되었습니다.');
 }
 
-// ── ANNOUNCEMENT MANAGEMENT ────────────────────────────────────────────
-function canDeleteAnn(a){return CU&&(CU.role==='admin'||a.author===CU.name);}
-function canEditAnn(a){return CU&&(CU.role==='admin'||a.author===CU.name);}
-function deleteAnn(id){
-  if(!confirm('이 공지를 삭제하시겠습니까?'))return;
-  var anns=getAnns();
-  var target=anns.find(function(a){return a.id===id;});
-  if(target&&target.sb_id&&sbClient){
-    sbClient.from('announcements').delete().eq('id',target.sb_id)
-      .then(function(){}).catch(function(e){console.warn('deleteAnn',e);});
-  }
-  anns=anns.filter(function(a){return a.id!==id;});
-  localStorage.setItem('tfann',JSON.stringify(anns));
-  go(CU.role==='admin'?'ab':'nc');updateNavDots();
-}
-function openAnnEdit(id){
-  var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
-  if(!a)return;
-  document.getElementById('ann-edit-id').value=id;
-  document.getElementById('ann-edit-title').value=a.title;
-  document.getElementById('ann-edit-body').value=a.body;
-  document.getElementById('ann-edit-imp').checked=!!a.important;
-  document.getElementById('ann-edit-modal').style.display='';
-}
-function closeAnnEdit(){document.getElementById('ann-edit-modal').style.display='none';}
-function submitAnnEdit(){
-  var id=Number(document.getElementById('ann-edit-id').value);
-  var title=document.getElementById('ann-edit-title').value.trim();
-  var body=document.getElementById('ann-edit-body').value.trim();
-  var imp=document.getElementById('ann-edit-imp').checked;
-  if(!title||!body){document.getElementById('ann-edit-err').textContent='제목과 내용을 입력해주세요.';return;}
-  var anns=getAnns();var a=anns.find(function(x){return x.id===id;});
-  if(a){a.title=title;a.body=body;a.important=imp;a.editedAt=new Date().toLocaleString('ko-KR');}
-  saveAnns(anns);closeAnnEdit();go(CU.role==='admin'?'ab':'nc');
-}
-
-// ── PERMISSION MANAGEMENT ─────────────────────────────────────────────
-function setRole(name,role){
-  var db=getDB();if(db[name])db[name].role=role;saveDB(db);
-  var labels={'driver':'기사','leader':'팀장','sub':'조장'};
-  alert(name+' → '+labels[role]+' 으로 변경되었습니다.');go('ap');
-}
+// (중복 함수 제거됨 — 위 섹션의 canDeleteAnn/canEditAnn/deleteAnn/openAnnEdit/closeAnnEdit/submitAnnEdit/setRole 사용)
 
 // ── PHONE BOOK PAGE ────────────────────────────────────────────────────
 function pgPhoneBook(){
@@ -5275,10 +5222,12 @@ function pgEmergencyContact(){
   }
   var adminBar='';
   if(CU.role==='admin'){
-    adminBar='<div style="margin-bottom:12px">'+
+    adminBar='<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">'+
       '<label style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1b5e20,#388e3c);color:#fff;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">'+
         '📊 엑셀 업로드<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="erImportExcel(this)">'+
-      '</label></div>';
+      '</label>'+
+      '<button onclick="if(sbClient)syncFromSupabase().then(function(){go(\'er\');}).catch(function(){})" style="display:inline-flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">🔄 Supabase 동기화</button>'+
+    '</div>';
   }
   return _featureBar('emergency')+'<div style="padding:0 2px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
