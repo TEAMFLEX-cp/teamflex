@@ -190,8 +190,10 @@ table.ft td.rtd{font-size:13px}
 .perm-check{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
 table.ft tr:hover td{background:#f8f9ff}
 table.ft tr:hover td.rtd{background:#eaecf8}
-table.ft td.tod-col{border-left:3px solid #e53935 !important;border-right:3px solid #e53935 !important}
-table.ft th.tod-col{border-left:3px solid #e53935 !important;border-right:3px solid #e53935 !important;border-top:3px solid #e53935 !important;position:relative}
+@keyframes tod-pulse{0%,100%{opacity:1;text-shadow:0 0 6px rgba(255,109,0,.9)}50%{opacity:.6;text-shadow:none}}
+table.ft td.tod-col{border-left:4px solid #FF6D00 !important;border-right:4px solid #FF6D00 !important;background:rgba(255,235,59,.18) !important;color:#1a1a1a !important}
+table.ft th.tod-col{border-left:4px solid #FF6D00 !important;border-right:4px solid #FF6D00 !important;border-top:4px solid #FF6D00 !important;position:relative;background:rgba(255,109,0,.13) !important;color:#bf360c !important}
+.tod-badge{font-size:10px;color:#FF6D00;font-weight:900;display:block;margin-top:2px;animation:tod-pulse 1.4s ease-in-out infinite;letter-spacing:.3px}
 table.ft td.sat-col{background:#fff3e0}
 table.ft th.sat-col{background:#ffe0b2;color:#bf360c}
 table.ft td.sun-col{background:#fce4ec}
@@ -3695,6 +3697,12 @@ function initSchedScrollSync(){
       _syncing=false;
     },{passive:true});
   });
+  // 오늘 컬럼 자동 스크롤 — 라우트 컬럼(96px) 바로 오른쪽에 오늘 컬럼이 오도록
+  var todTh=document.querySelector('th.tod-col');
+  if(todTh){
+    var scrollTo=Math.max(0,todTh.offsetLeft-100);
+    wrappers.forEach(function(w){w.scrollLeft=scrollTo;});
+  }
 }
 function moveSchedWeek(delta){
   var keys=getWeekKeys();var idx=keys.indexOf(SCHED_WK);
@@ -3805,7 +3813,7 @@ function pgFullSched(){
     for(var di=0;di<wk.dl.length;di++){
       var cc=colClasses[di];
       var isTod=(di===todayColIdx);
-      var todBadge=isTod?'<div style="font-size:10px;color:#e53935;font-weight:800;line-height:1.2;margin-top:2px">&#x1F4CD; 오늘</div>':'';
+      var todBadge=isTod?'<span class="tod-badge">&#x1F4CD; 오늘</span>':'';
       hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+wk.dl[di]+todBadge+'</th>';
     }
     var rows='';
