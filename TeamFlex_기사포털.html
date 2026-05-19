@@ -4286,7 +4286,7 @@ async function editDriverId(name){
 function pgPermissions(){
   var db=getDB();
   var cfg=getCfg();
-  var sbn=function(a,b){return a.name.localeCompare(b.name,'ko');};
+  var sbn=function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');};
   var all=Object.values(db).filter(function(d){return splitDriverSuffix(d.name).suf==='';});
   var gLd =all.filter(function(d){return d.role==='leader'&&d.status==='approved';}).sort(sbn);
   var gSb =all.filter(function(d){return d.role==='sub'&&d.status==='approved';}).sort(sbn);
@@ -4714,7 +4714,7 @@ function pgPhoneBook(){
   var sbn=function(a,b){
     var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;
     if(ra!==rb)return ra-rb;
-    return a.name.localeCompare(b.name,'ko');
+    return (a.name||'').localeCompare((b.name||''),'ko');
   };
   var all=Object.values(db)
     .filter(function(d){return d.name&&!d.name.includes('/')&&splitDriverSuffix(d.name).suf===''&&d.role!=='admin'&&d.status==='approved';})
@@ -4839,7 +4839,7 @@ function phSearch(q){
   drivers.sort(function(a,b){
     var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;
     if(ra!==rb)return ra-rb;
-    return a.name.localeCompare(b.name,'ko');
+    return (a.name||'').localeCompare((b.name||''),'ko');
   });
   var el=document.getElementById('er-list');
   if(!el)return;
@@ -5001,7 +5001,7 @@ async function saveAddDriver(){
 }
 function downloadPhoneExcel(){
   var db=getDB();
-  var sbn=function(a,b){return a.name.localeCompare(b.name,'ko');};
+  var sbn=function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');};
   var rows=Object.values(db)
     .filter(function(d){return d.name&&splitDriverSuffix(d.name).suf===''&&!d.name.includes('/');})
     .sort(sbn);
@@ -5224,7 +5224,7 @@ function pgEmergencyContact(){
   var roleColors={'admin':'#c62828','leader':'#1565c0','sub':'#6a1b9a','driver':'#2e7d32'};
   var _canSeeBlind=(CU.role==='admin');
   var drivers=Object.values(db).filter(function(d){return d.name&&d.name!==ROOT_ADMIN.id&&d.role!=='admin'&&d.status==='approved'&&(!d.blind||_canSeeBlind);});
-  drivers.sort(function(a,b){var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;if(ra!==rb)return ra-rb;return a.name.localeCompare(b.name,'ko');});
+  drivers.sort(function(a,b){var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;if(ra!==rb)return ra-rb;return (a.name||'').localeCompare((b.name||''),'ko');});
   function _buildCard(d){
     var phone=d.phone&&d.phone.trim()?d.phone.trim():'';
     var carNo=d.car_no||d.carNo||'';
@@ -5293,7 +5293,7 @@ function erSearch(q){
     var _csb=(CU.role==='admin');
     return d.name&&d.name!==ROOT_ADMIN.id&&d.role!=='admin'&&d.status==='approved'&&(!d.blind||_csb)&&(!sq||d.name.indexOf(sq)>=0||(d.phone&&d.phone.indexOf(sq)>=0)||carMatch||digitMatch);
   });
-  drivers.sort(function(a,b){var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;if(ra!==rb)return ra-rb;return a.name.localeCompare(b.name,'ko');});
+  drivers.sort(function(a,b){var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;if(ra!==rb)return ra-rb;return (a.name||'').localeCompare((b.name||''),'ko');});
   var el=document.getElementById('er-list');if(!el)return;
   if(!drivers.length){el.innerHTML='<div style="color:#aaa;font-size:13px;padding:20px;text-align:center">검색 결과 없음</div>';return;}
   var lastRole='';var h='';
