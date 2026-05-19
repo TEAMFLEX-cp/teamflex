@@ -1008,8 +1008,14 @@ async function schedRefresh(){
       return parseInt(p[1])+'/'+parseInt(p[2])+'('+dow+')';
     });
     var lg={};var lkOrder=[];
-    // DW 해당 주차 초기화
-    Object.keys(DW).forEach(function(dn){if(DW[dn])delete DW[dn][ws];});
+    // 기사 배정 데이터가 있을 때만 DW 초기화 (없으면 기존 하드코딩 데이터 유지)
+    var _hasDriverData=r.data.some(function(e){
+      return (e.driver_name&&e.driver_name.trim())||
+             (e.share&&e.share!=='[]'&&e.share!=='null'&&e.share.length>4);
+    });
+    if(_hasDriverData){
+      Object.keys(DW).forEach(function(dn){if(DW[dn])delete DW[dn][ws];});
+    }
     // pairs: lg[lk].pairs[rr][dt] = [{r:subRoute, d:driverName}, ...]
     r.data.forEach(function(e){
       var gls=e.grp_leaders?(typeof e.grp_leaders==='string'?JSON.parse(e.grp_leaders||'[]'):(e.grp_leaders||[])):[];
@@ -1675,18 +1681,13 @@ loadAdminCfgFromSB().then(function(){
   return syncFromSupabase();
 }).then(function(){
   console.log('Supabase 동기화 완료');
-  // 스케줄도 함께 로드 (백그라운드, 탭 이동 전에 미리 준비)
-  schedRefresh().catch(function(e){console.warn('schedRefresh startup 오류',e);});
   _reRenderCurTab();
 }).catch(function(e){console.warn('동기화 실패',e);_reRenderCurTab();});
 
 // ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&sbClient){
-    syncFromSupabase().then(function(){
-      schedRefresh().catch(function(){});
-      _reRenderCurTab();
-    }).catch(function(){});
+    syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
   }
 });
 
