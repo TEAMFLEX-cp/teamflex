@@ -6026,6 +6026,9 @@ function pgMisdelivery(){
 }
 
 // ── 케이스 목록 로드 ──────────────────────────────────────────────────
+function mdEsc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 async function mdLoadCases(){
   if(!CU||!sbClient)return;
   // 비활성 상태면 잠금 화면으로 교체 (비관리자: feature 로드 완료 후 재진입 시 처리)
